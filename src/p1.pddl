@@ -9,6 +9,7 @@
     (on-burner su)
     (on-counter sp)
     (gripper-empty)
+    (gripper-away-from-objects)
 )
 
 (:goal (and
@@ -16,7 +17,7 @@
     (on-counter su)
     (gripper-empty)
     (base-at-counter)
-    (forall(o? object) (not(gripper-at-object ?o)))
+    (gripper-away-from-objects)
     (not (drawer-open))
 ))
 

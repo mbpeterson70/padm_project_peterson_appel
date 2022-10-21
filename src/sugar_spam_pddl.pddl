@@ -16,6 +16,7 @@
 		(base-at-counter)
 		
 		(gripper-at-object ?o - object)
+		(gripper-away-from-objects)
 		(in-gripper ?o - object)
 		(gripper-empty)
 		
@@ -37,16 +38,14 @@
 	(:action move-to-object
 		:parameters (?o - object)
 		:precondition 
-			(and (forall(?o - object)
-				(not(gripper-at-object ?o)))
-			(base-at-counter))
-		:effect (gripper-at-object ?o)
+			(and (gripper-away-from-objects) (base-at-counter))
+		:effect (and (gripper-at-object ?o) (not (gripper-away-from-objects)))
 	)
 	
 	(:action move-away-from-object
 		:parameters (?o - object)
 		:precondition (and (gripper-at-object ?o) (gripper-empty) (base-at-counter))
-		:effect (not(gripper-at-object ?o))
+		:effect (and (not(gripper-at-object ?o)) (gripper-away-from-objects))
 	)
 		
 	(:action move-object-to-burner
@@ -87,10 +86,7 @@
 			(base-at-counter)
 		)
 	)
-	
-		
-		
-	
+)
 	
 		
 	
