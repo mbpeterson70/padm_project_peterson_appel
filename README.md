@@ -14,5 +14,9 @@ gripper-at-object ?o
 
 for this predicate ?o denotes any object (the sugar, spam and drawer handle). This predicate is set true once an action is chosen for the gripper to move to an object. Alternatively, this predicate is set false after the object has been released and an action is called for the gripper to move away from the object. This means that after each object is moved, the gripper will "reset" at a default location, which will add a small amount of time to the execution, but this was determined to be acceptable. 
 
+## PDDL File and Problem Formulation
+
+The actual PDDL domain and all corresponding objects, predicates and actions can be found in the sugar_spam_pddl.pddl file and the problem statement can be found in the p1.pddl file. 
+
 
 
