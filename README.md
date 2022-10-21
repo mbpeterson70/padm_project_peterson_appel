@@ -18,5 +18,15 @@ for this predicate ?o denotes any object (the sugar, spam and drawer handle). Th
 
 The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [sugar_spam_pddl.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/sugar_spam_pddl.pddl) file and the problem statement can be found in the [p1.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/p1.pddl) file. 
 
+### Initial State
+
+The initial state was given in our problem statement. This includes:
+
+1. Sugar on the burner (on-burner su)
+
+2. Spam on the counter (on-counter sp)
+
+3. The gripper away from the counter and empty (gripper-empty)
+
 
 
