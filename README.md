@@ -23,10 +23,23 @@ The actual PDDL domain and all corresponding objects, predicates and actions can
 The initial state was given in our problem statement. This includes:
 
 1. Sugar on the burner (on-burner su)
-
 2. Spam on the counter (on-counter sp)
-
 3. The gripper away from the counter and empty (gripper-empty)
+
+### Goal State
+
+The final state with respect to our problem formulations is:
+
+1. Sugar on the counter (on-counter su)
+2. Spam in the drawer (in-drawer sp)
+3. The gripper is empty (gripper-empty)
+4. The gripper robot is still at the counter (base-at-counter)
+5. The gripper has "reset" to its default locaiton (gripper-away-from-objects)
+6. The drawer is closed (not(drawer-open))
+
+### Check
+
+Our first step in checking that our pddle domain and problem statement were correct was getting them to work correctly with the provided pddl parser. This was accomplished and we were able to get a list of actions from the initial state to the goal state.
 
 
 
