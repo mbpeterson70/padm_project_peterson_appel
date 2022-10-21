@@ -4,8 +4,8 @@
 	(:requirements :strips :typing)
 	
 	(:types
-		item handle - objects
-		sugar spam - item
+		item
+		handle
 	)
 	
 	(:predicates
@@ -15,35 +15,35 @@
 		
 		(base-at-counter)
 		
-		(gripper-at-object ?o - object)
+		(gripper-at-object ?o)
 		(gripper-away-from-objects)
-		(in-gripper ?o - object)
+		(in-gripper ?o)
 		(gripper-empty)
 		
 		(drawer-open)
 	)
 	
 	(:action grab-object
-		:parameters (?o - object)
+		:parameters (?o)
 		:precondition (and (gripper-empty) (gripper-at-object ?o) (base-at-counter))
 		:effect (and (in-gripper ?o) (not(gripper-empty)))
 	)
 	
 	(:action release-object
-		:parameters (?o - object)
+		:parameters (?o)
 		:precondition (and (in-gripper ?o) (gripper-at-object ?o) (base-at-counter))
 		:effect (and (gripper-empty) (not(in-gripper ?o)))
 	)
 	
 	(:action move-to-object
-		:parameters (?o - object)
+		:parameters (?o)
 		:precondition 
 			(and (gripper-away-from-objects) (base-at-counter))
 		:effect (and (gripper-at-object ?o) (not (gripper-away-from-objects)))
 	)
 	
 	(:action move-away-from-object
-		:parameters (?o - object)
+		:parameters (?o)
 		:precondition (and (gripper-at-object ?o) (gripper-empty) (base-at-counter))
 		:effect (and (not(gripper-at-object ?o)) (gripper-away-from-objects))
 	)

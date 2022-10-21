@@ -1,7 +1,7 @@
 (define (problem p1) (:domain kitchen)
 (:objects 
-    su - sugar
-    sp - spam
+    su - item
+    sp - item
     h - handle
 )
 
