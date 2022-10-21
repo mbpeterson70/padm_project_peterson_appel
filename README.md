@@ -39,7 +39,6 @@ The final state with respect to our problem formulations is:
 
 ### Check
 
-Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided pddl parser. This was accomplished and we were able to get a list of actions from the initial state to the goal state.
+Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided pddl parser. This was accomplished and we were able to get a list of actions from the initial state to the goal state by using the example activity planner provided.
 
-
-
+Our next step will be creating an activity planner that encorporates a calculated fast-forward heuristic to get the optimal path from our intial state and goal state. 
