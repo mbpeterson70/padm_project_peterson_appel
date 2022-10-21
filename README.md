@@ -16,7 +16,7 @@ for this predicate ?o denotes any object (the sugar, spam and drawer handle). Th
 
 ## PDDL File and Problem Formulation
 
-The actual PDDL domain and all corresponding objects, predicates and actions can be found in the sugar_spam_pddl.pddl file and the problem statement can be found in the p1.pddl file. 
+The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [sugar_spam_pddl.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/sugar_spam_pddl.pddl) file and the problem statement can be found in the [p1.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/p1.pddl) file. 
 
 
 
