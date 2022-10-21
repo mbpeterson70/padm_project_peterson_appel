@@ -8,5 +8,11 @@ We first assumed that there were only three objects that we needed to consider -
 
 on-burner ?i, in-drawer ?i, and on-counter ?i
 
-where the ?i denotes an item type object (spam or sugar). 
+where the ?i denotes an item type object (spam or sugar). Each of these is set to true if the item is at that location and set to false once the gripper moves them. The gripper location was covered by setting an additoinal predicate:
+
+gripper-at-object ?o
+
+for this predicate ?o denotes any object (the sugar, spam and drawer handle). This predicate is set true once an action is chosen for the gripper to move to an object. Alternatively, this predicate is set false after the object has been released and an action is called for the gripper to move away from the object. This means that after each object is moved, the gripper will "reset" at a default location, which will add a small amount of time to the execution, but this was determined to be acceptable. 
+
+
 
