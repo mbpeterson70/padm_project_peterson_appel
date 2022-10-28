@@ -13,21 +13,29 @@ class ActivityPlanner():
         # Parsed data
 
         state = parser.state
-        goal_pos = parser.positive_goals
-        goal_neg = parser.negative_goals
+        self.goal_pos = parser.positive_goals
+        self.goal_neg = parser.negative_goals
 
         # Do nothing
         # if self.applicable(state, goal_pos, goal_neg):
         #     return []
         # Remove typing through grounding process
-        ground_actions = []
+        self.ground_actions = []
         for action in parser.actions:
             for act in action.groundify(parser.objects, parser.types):
-                ground_actions.append(act)
+                self.ground_actions.append(act)
 
         # print(state)
         # print(goal_pos)
         # print(goal_neg)
+    
+    def A_star_solver(self):
+        
+        return []
+
+    def BFS_solver(self):
+        q = []
+
 
     # -----------------------------------------------
     # Applicable
