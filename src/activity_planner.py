@@ -33,6 +33,8 @@ class ActivityPlanner():
         def h(state):
             if heuristic=='BFS':
                 return len(self.BFS_solver(root_state=state))
+            elif heuristic=='relaxed_moves':
+                return self.relaxed_move_heuristic(root_state=state)
 
         q = [(h(self.init_state), self.init_state, [])]
         expanded=set()
@@ -78,6 +80,30 @@ class ActivityPlanner():
                         visited.add(new_state)
         return []
 
+    def relaxed_move_heuristic(self, root_state=None):
+        if root_state == None:
+            root_state = self.init_state
+
+        relaxed_state = root_state
+        pos_relaxed_state = root_state
+        neg_relaxed_state = root_state
+
+        action = 0
+        
+        while  (not self.goal_pos.issubset(pos_relaxed_state)) and (not self.goal_neg.issubset(neg_relaxed_state)):
+            
+            for act in self.ground_actions:
+                if self.applicable(relaxed_state, act.positive_preconditions, act.negative_preconditions):
+                    relaxed_state = relaxed_state.union(act.add_effects)
+                    relaxed_state = relaxed_state.union(act.del_effects)
+                    pos_relaxed_state = pos_relaxed_state.union(act.add_effects)
+                    neg_relaxed_state = neg_relaxed_state.union(act.del_effects)
+            
+            action += 1
+
+        return action
+
+
 
 
     # -----------------------------------------------
@@ -114,10 +140,12 @@ if __name__ == '__main__':
     total_time = 0
     for i in range(10):
         start_time = time.time()
-        solution = p.A_star_solver(heuristic='BFS', consistent=True)
+        solution = p.A_star_solver(heuristic='relaxed_moves', consistent=True)
         end_time = time.time()
         total_time += end_time-start_time
-    print(f'A-star w/ expanded list (BFS heuristic): {total_time/10}')
+    for act in solution:
+        print(f'{act.name} {act.parameters}')
+    print(f'A-star w/ expanded list (relaxed move heuristic): {total_time/10}')
     total_time = 0
     for i in range(10):
         start_time = time.time()
