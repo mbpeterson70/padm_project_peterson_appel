@@ -6,64 +6,69 @@
 	(:types
 		item
 		handle
+		location
+		drawer
+		gripper
 	)
 	
 	(:predicates
-		(on-burner ?i - item)
-		(in-drawer ?i - item)
-		(on-counter ?i - item)
-		
+		(at-location ?o ?l)
+		(location-empty ?l)
+
 		(base-at-counter)
 		
-		(gripper-at-object ?o)
-		(gripper-away-from-objects)
 		(in-gripper ?o)
 		(gripper-empty)
 		
 		(drawer-open)
 	)
 	
-	(:action grab-object
-		:parameters (?o)
-		:precondition (and (gripper-empty) (gripper-at-object ?o) (base-at-counter))
-		:effect (and (in-gripper ?o) (not(gripper-empty)))
+	(:action grab-item
+		:parameters (?g - gripper ?i - item ?l - location)
+		:precondition (and (gripper-empty) (at-location ?i ?l) (at-location ?g ?l) (base-at-counter))
+		:effect (and (in-gripper ?i) (not(gripper-empty)))
+	)
+
+	(:action grab-handle
+		:parameters (?g - gripper ?h - handle ?l - location)
+		:precondition (and (gripper-empty) (at-location ?h ?l) (at-location ?g ?l) (base-at-counter))
+		:effect (and (in-gripper ?h) (not(gripper-empty)))
 	)
 	
 	(:action release-object
-		:parameters (?o)
-		:precondition (and (in-gripper ?o) (gripper-at-object ?o) (base-at-counter))
+		:parameters (?g - gripper ?l ?o)
+		:precondition (and (in-gripper ?o) (at-location ?o ?l) (at-location ?g ?l) (base-at-counter))
 		:effect (and (gripper-empty) (not(in-gripper ?o)))
 	)
 	
-	(:action move-to-object
-		:parameters (?o)
-		:precondition 
-			(and (gripper-away-from-objects) (base-at-counter))
-		:effect (and (gripper-at-object ?o) (not (gripper-away-from-objects)))
+	(:action move-gripper
+		:parameters (?g - gripper ?l1 - location ?l2 - location)
+		:precondition (and (gripper-empty) (at-location ?g ?l1) (base-at-counter))
+		:effect (and (not(at-location ?g ?l1)) (at-location ?g ?l2))
 	)
-	
-	(:action move-away-from-object
-		:parameters (?o)
-		:precondition (and (gripper-at-object ?o) (gripper-empty) (base-at-counter))
-		:effect (and (not(gripper-at-object ?o)) (gripper-away-from-objects))
+
+	(:action move-gripper-from-drawer
+		:parameters (?g - gripper ?d - drawer ?l - location)
+		:precondition (and (gripper-empty) (at-location ?g ?d) (base-at-counter))
+		:effect (and (not(at-location ?g ?d)) (at-location ?g ?l))
 	)
-		
-	(:action move-object-to-burner
-		:parameters (?i - item)
-		:precondition (and (in-gripper ?i) (not(on-burner ?i)) (base-at-counter))
-		:effect (and (on-burner ?i) (not(in-drawer ?i)) (not(on-counter ?i)))
+
+	(:action move-item
+		:parameters (?g - gripper ?i - item ?l1 - location ?l2 - location)
+		:precondition (and (not(gripper-empty)) (at-location ?g ?l1) (at-location ?i ?l1) (in-gripper ?i) (location-empty ?l2) (base-at-counter))
+		:effect (and (not(at-location ?g ?l1)) (not(at-location ?i ?l1)) (at-location ?g ?l2) (at-location ?i ?l2) (location-empty ?l1) (not (location-empty ?l2)))
 	)
-		
-	(:action move-object-to-counter
-		:parameters (?i - item)
-		:precondition (and (in-gripper ?i) (not(on-counter ?i)) (base-at-counter))
-		:effect (and (on-counter ?i) (not(in-drawer ?i)) (not(on-burner ?i)))
+
+	(:action move-item-to-drawer
+		:parameters (?g - gripper ?i - item ?l - location ?d - drawer)
+		:precondition (and (not(gripper-empty)) (at-location ?g ?l) (at-location ?i ?l) (in-gripper ?i) (drawer-open) (location-empty ?d) (base-at-counter))
+		:effect (and (not(at-location ?g ?l)) (not(at-location ?i ?l)) (at-location ?g ?d) (at-location ?i ?d) (location-empty ?l) (not (location-empty ?d)))
 	)
-		
-	(:action move-object-to-drawer
-		:parameters (?i - item)
-		:precondition (and (in-gripper ?i) (drawer-open) (not(in-drawer ?i)) (base-at-counter))
-		:effect (and (in-drawer ?i) (not(on-burner ?i)) (not(on-counter ?i)))
+
+	(:action move-item-from-drawer
+		:parameters (?g - gripper ?i - item ?d - drawer ?l - location)
+		:precondition (and (not(gripper-empty)) (at-location ?g ?d) (at-location ?i ?d) (in-gripper ?i) (location-empty ?l) (drawer-open) (base-at-counter))
+		:effect (and (not(at-location ?g ?d)) (not(at-location ?i ?d)) (at-location ?g ?l) (at-location ?i ?l) (location-empty ?d) (not (location-empty ?l)))
 	)
 	
 	(:action open-drawer
