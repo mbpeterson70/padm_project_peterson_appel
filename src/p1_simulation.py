@@ -10,7 +10,11 @@ parent_dir = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.join(parent_dir, 'padm-project-2022f'), 'ss-pybullet')))
 sys.path.insert(0, os.path.abspath(os.path.join(parent_dir, 'padm-project-2022f')))
 
-from pybullet_tools.utils import set_pose, Pose, Point, Euler, multiply, get_pose, get_point, create_box, set_all_static, WorldSaver, create_plane, COLOR_FROM_NAME, stable_z_on_aabb, pairwise_collision, elapsed_time, get_aabb_extent, get_aabb, create_cylinder, set_point, get_function_name, wait_for_user, dump_world, set_random_seed, set_numpy_seed, get_random_seed, get_numpy_seed, set_camera, set_camera_pose, link_from_name, get_movable_joints, get_joint_name
+from pybullet_tools.utils import set_pose, Pose, Point, Euler, multiply, get_pose, get_point, create_box, set_all_static, WorldSaver, create_plane, \
+    COLOR_FROM_NAME, stable_z_on_aabb, pairwise_collision, elapsed_time, get_aabb_extent, get_aabb, \
+    create_cylinder, set_point, get_function_name, wait_for_user, dump_world, set_random_seed, \
+    set_numpy_seed, get_random_seed, get_numpy_seed, set_camera, set_camera_pose, link_from_name, \
+    get_movable_joints, get_joint_name, get_joint_state, get_joint_position
 from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits, set_joint_positions, interval_generator, get_link_pose, interpolate_poses
 
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO, FRANKA_URDF
@@ -61,7 +65,10 @@ def main():
     print('Numpy seed:', get_numpy_seed())
 
     np.set_printoptions(precision=3, suppress=True)
-    world = World(use_gui=False)
+    world = World(use_gui=True)
+
+    print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
+    print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
     sugar_box = add_sugar_box(world, idx=0, counter=1, pose2d=(-0.2, 0.65, np.pi / 4))
     spam_box = add_spam_box(world, idx=1, counter=0, pose2d=(0.2, 1.1, np.pi / 4))
     wait_for_user()
