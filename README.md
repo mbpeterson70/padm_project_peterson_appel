@@ -42,3 +42,50 @@ The final state with respect to our problem formulations is:
 Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided pddl parser. This was accomplished and we were able to get a list of actions from the initial state to the goal state by using the example activity planner provided.
 
 Our next step will be creating an activity planner that encorporates a calculated fast-forward heuristic to get the optimal path from our intial state and goal state. 
+
+## Motion Planner
+
+### Assumptions
+
+* We can always find out the the state of any of the objects in the scene including different pieces of the robot arm
+* We will always start in the same position
+* Robot arm is holding an object when within a certain radius of it (still determining radius)
+
+### Motion Planner
+
+* There is an associated motion planner with each of the different activities within the PDDL domain space
+* Generally, the motion planners involve translating and rotating the gripper to some new location without colliding with any object
+* These motions involve following the plan created by an RRT algorithm
+
+### Files
+
+* `p1_simulation.py` runs the simulation
+* `motion_planner.py` contains code for planning motions
+* `activity_executor.py` contains code for executing plans (uses motion planner)
+
+### Integration with Activity Plan
+
+The activity plan spits out a list of activities to perform and parameters for those activities. We are creating functions within our activity_executor to carry out each of those activities. The activity executor uses the parameters and the poses of the different objects and surfaces to create start positions and goal positions to hand to the motion planner. After receiving a plan from the motion planner, the activity executor executes the plan. 
+
+### Challenges
+
+We found sifting through the huge compilation of source code really difficult. Without many resources, it is hard to understand what the different pieces of the code-base do. 
+
+Our project is a work in progress, but we are making progress in the development of the code.
+
+### API
+
+* RRT
+  * input: start pose, end pose
+  * output: path (list of states in between)
+* collision_check
+  * input: state, world
+  * output: True, False
+* drive_cart
+* grab object
+
+### Image
+
+Start of simulation. More to come.
+
+![sim](media/p1.png)
