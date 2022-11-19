@@ -27,6 +27,7 @@ from src.utils import JOINT_TEMPLATE, BLOCK_SIZES, BLOCK_COLORS, COUNTERS, \
     STOVES, TOP_GRASP, randomize, LEFT_DOOR, point_from_pose, translate_linearly
 
 from activity_planner import ActivityPlanner
+from motion_planner import MotionPlanner
 
 UNIT_POSE2D = (0., 0., 0.)
 
@@ -68,37 +69,46 @@ def main():
     print('Numpy seed:', get_numpy_seed())
 
     np.set_printoptions(precision=3, suppress=True)
-    world = World(use_gui=False)
-
-    print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
-    print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
-    print(get_joint_positions(world.robot, world.arm_joints))
-    sample_fn = get_sample_fn(world.robot, world.arm_joints)
-    print(sample_fn())
-    tool_link = link_from_name(world.robot, 'panda_hand')
-    print(f'ik_joints: {get_ik_joints(world.robot, PANDA_INFO, tool_link)}')
-    print(f'link pose: {get_link_pose(world.robot, tool_link)}')
-    start_pose = get_link_pose(world.robot, tool_link)
-    end_pose = multiply(start_pose, Pose(Point(z=1.0)))
-    print(f'end_pose: {end_pose}')
-    new_pose = start_pose
-    # for i in range(10):
-    #     # I think this translates the vector 1 unit along its z axis (from its quaternion)
-    #     new_pose = multiply(new_pose, Pose(Point(z=1.0)))
-    #     print(f'mult_transform: {new_pose}')
+    world = World(use_gui=True)
     sugar_box = add_sugar_box(world, idx=0, counter=1, pose2d=(-0.2, 0.65, np.pi / 4))
     spam_box = add_spam_box(world, idx=1, counter=0, pose2d=(0.2, 1.1, np.pi / 4))
+    tool_link = link_from_name(world.robot, 'panda_hand')
+    start_pose = get_link_pose(world.robot, tool_link)
+
+    # Make true to check out these functions
+    if False:
+        print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
+        print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
+        print(get_joint_positions(world.robot, world.arm_joints))
+        sample_fn = get_sample_fn(world.robot, world.arm_joints)
+        print(sample_fn())
+        print(f'ik_joints: {get_ik_joints(world.robot, PANDA_INFO, tool_link)}')
+        print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+        end_pose = multiply(start_pose, Pose(Point(z=1.0)))
+        print(f'end_pose: {end_pose}')
+        new_pose = start_pose
+        for i in range(10):
+            # I think this translates the vector 1 unit along its z axis (from its quaternion)
+            new_pose = multiply(new_pose, Pose(Point(z=1.0)))
+            print(f'mult_transform: {new_pose}')
+    
     wait_for_user()
     world._update_initial()
 
-    for i in range(1,3):
-        for j in range(4):
-            goal_joints = list(get_joint_positions(world.robot, world.arm_joints))
-            goal_joints[-i] = goal_joints[-i] + np.pi/4
-            set_joint_positions(world.robot, world.arm_joints, goal_joints)
-            print(f'link pose: {get_link_pose(world.robot, tool_link)}')
-            wait_for_user()
-        # conf = next(closest_inverse_kinematics(world.robot, PANDA_INFO, tool_link, pose, max_time=0.05), None)
+    # Make True to see how to move robot
+    if False:
+        for i in range(1,3):
+            for j in range(4):
+                goal_joints = list(get_joint_positions(world.robot, world.arm_joints))
+                goal_joints[-i] = goal_joints[-i] + np.pi/4
+                set_joint_positions(world.robot, world.arm_joints, goal_joints)
+                print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+                wait_for_user()
+    if True:
+        mp = MotionPlanner(.4, world, tol=.1)
+        plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.3, z=.3))))
+        wait_for_user()
+        mp.execute_motion_plan(plan)
 
 
     tool_link = link_from_name(world.robot, 'panda_hand')
