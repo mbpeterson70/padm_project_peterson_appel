@@ -14,7 +14,7 @@ from pybullet_tools.utils import set_pose, Pose, Point, Euler, multiply, get_pos
     COLOR_FROM_NAME, stable_z_on_aabb, pairwise_collision, elapsed_time, get_aabb_extent, get_aabb, \
     create_cylinder, set_point, get_function_name, wait_for_user, dump_world, set_random_seed, \
     set_numpy_seed, get_random_seed, get_numpy_seed, set_camera, set_camera_pose, link_from_name, \
-    get_movable_joints, get_joint_name, get_joint_state, get_joint_position
+    get_movable_joints, get_joint_name, get_joint_state, get_joint_position, get_joint_positions
 from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits, set_joint_positions, interval_generator, get_link_pose, interpolate_poses
 
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO, FRANKA_URDF
@@ -50,6 +50,9 @@ add_spam_box = lambda world, **kwargs: add_ycb(world, 'potted_meat_can', **kwarg
 
 def get_sample_fn(body, joints, custom_limits={}, **kwargs):
     lower_limits, upper_limits = get_custom_limits(body, joints, custom_limits, circular_limits=CIRCULAR_LIMITS)
+    print('limits')
+    print(lower_limits)
+    print(upper_limits)
     generator = interval_generator(lower_limits, upper_limits, **kwargs)
     def fn():
         return tuple(next(generator))
@@ -65,14 +68,39 @@ def main():
     print('Numpy seed:', get_numpy_seed())
 
     np.set_printoptions(precision=3, suppress=True)
-    world = World(use_gui=True)
+    world = World(use_gui=False)
 
     print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
     print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
+    print(get_joint_positions(world.robot, world.arm_joints))
+    sample_fn = get_sample_fn(world.robot, world.arm_joints)
+    print(sample_fn())
+    tool_link = link_from_name(world.robot, 'panda_hand')
+    print(f'ik_joints: {get_ik_joints(world.robot, PANDA_INFO, tool_link)}')
+    print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+    start_pose = get_link_pose(world.robot, tool_link)
+    end_pose = multiply(start_pose, Pose(Point(z=1.0)))
+    print(f'end_pose: {end_pose}')
+    new_pose = start_pose
+    # for i in range(10):
+    #     # I think this translates the vector 1 unit along its z axis (from its quaternion)
+    #     new_pose = multiply(new_pose, Pose(Point(z=1.0)))
+    #     print(f'mult_transform: {new_pose}')
     sugar_box = add_sugar_box(world, idx=0, counter=1, pose2d=(-0.2, 0.65, np.pi / 4))
     spam_box = add_spam_box(world, idx=1, counter=0, pose2d=(0.2, 1.1, np.pi / 4))
     wait_for_user()
     world._update_initial()
+
+    for i in range(1,3):
+        for j in range(4):
+            goal_joints = list(get_joint_positions(world.robot, world.arm_joints))
+            goal_joints[-i] = goal_joints[-i] + np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+            wait_for_user()
+        # conf = next(closest_inverse_kinematics(world.robot, PANDA_INFO, tool_link, pose, max_time=0.05), None)
+
+
     tool_link = link_from_name(world.robot, 'panda_hand')
     joints = get_movable_joints(world.robot)
     print('Base Joints', [get_joint_name(world.robot, joint) for joint in world.base_joints])
