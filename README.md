@@ -83,3 +83,9 @@ Our project is a work in progress, but we are making progress in the development
   * output: True, False
 * drive_cart
 * grab object
+
+### Image
+
+Start of simulation. More to come.
+
+![sim](media/p1.png)
