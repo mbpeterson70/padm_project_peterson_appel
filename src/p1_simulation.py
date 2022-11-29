@@ -105,8 +105,9 @@ def main():
                 print(f'link pose: {get_link_pose(world.robot, tool_link)}')
                 wait_for_user()
     if True:
-        mp = MotionPlanner(.4, world, tol=.1)
-        plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.3, z=.3))))
+        mp = MotionPlanner(rrt_edge_len=.01, rrt_goal_biasing=5, world=world, tol=1e-9)
+        plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.2, y=-.4))))
+        # print(next(closest_inverse_kinematics(world.robot, PANDA_INFO, tool_link, multiply(start_pose, Pose(Point(x=.01))), max_time=0.5), None))
         wait_for_user()
         mp.execute_motion_plan(plan)
 

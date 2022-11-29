@@ -1,18 +1,23 @@
 import numpy as np
 from scipy.spatial import KDTree
 from time import sleep
+from copy import deepcopy
 
 from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits, interval_generator, set_joint_positions, \
-    link_from_name, get_link_pose
-from src.utils import are_confs_close
-
+    link_from_name, get_link_pose, get_joint_positions, set_pose
+from src.utils import are_confs_close, set_tool_pose, get_tool_from_root
+from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO
+from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
+# get_tool_from_root
+# tool is the link gripper attached
 class MotionPlanner():
     '''
     Creates a plan to move gripper from some initial configuration to a goal pose.
     '''
 
-    def __init__(self, rrt_edge_len, world, tol=1e-3):
+    def __init__(self, rrt_edge_len=.2, rrt_goal_biasing=5, world=None, tol=1e-9):
         self.edge_len = rrt_edge_len
+        self.goal_biasing = rrt_goal_biasing
         self.world = world
         lower_limits, upper_limits = \
             get_custom_limits(self.world.robot, self.world.arm_joints, {}, circular_limits=CIRCULAR_LIMITS)
@@ -23,18 +28,22 @@ class MotionPlanner():
     def execute_motion_plan(self, plan):
         for conf in plan:
             set_joint_positions(self.world.robot, self.world.arm_joints, conf)
-            sleep(.1)
+            sleep(.01)
 
     def motion_plan_rrt(self, conf_start, goal_pose):
         '''
         RRT algorithm to move from start configuration (series of joint angles) to 
         goal pose (gripper position and orientation.
         '''
+        goal_conf = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
         vertices = {conf_start}
         edges = dict()
-        
-        while True:
-            conf_rand = self.get_random_configuration()
+
+        for i in range(int(1e20)):
+            if i % self.goal_biasing == 0:
+                conf_rand = tuple(goal_conf)
+            else:
+                conf_rand = self.get_random_configuration()
             conf_nearest, conf_nearest_dist = self.nearest_conf(vertices, conf_rand)
             if conf_nearest_dist > self.edge_len:
                 conf_new = np.array(conf_nearest) + \
@@ -42,12 +51,12 @@ class MotionPlanner():
                 conf_new = tuple(conf_new.tolist())
             else:
                 conf_new = conf_rand
-            pose_new = self.get_conf_gripper_pose(conf_new, conf_start)
+            print(conf_new)
             # TODO: Check for collision here!!
             if True:
                 vertices.add(conf_new)
                 edges[conf_new] = conf_nearest
-                if self.close_to_goal(pose_new, goal_pose):
+                if np.linalg.norm(np.array(conf_new) - np.array(goal_conf)) < self.tol:
                     solution_path = self.path_to_vertex(conf_start, conf_new, edges)
                     return solution_path
 
@@ -62,23 +71,6 @@ class MotionPlanner():
         closest_dist, closest_idx = T.query(np.array(conf_rand))
         closest = vertices_list[closest_idx]
         return closest, closest_dist
-    
-    def get_conf_gripper_pose(self, conf, orig_conf):
-        '''Get the pose of the gripper for an arbitrary configuration.'''
-        set_joint_positions(self.world.robot, self.world.arm_joints, conf)
-        pose = get_link_pose(self.world.robot, self.tool_link)
-        # reset back to original
-        set_joint_positions(self.world.robot, self.world.arm_joints, orig_conf) 
-        return pose
-
-    def close_to_goal(self, pose, goal_pose):
-        '''Checks if a pose is within some tolerance of the goal pose.'''
-        # TODO: Add check for orientation here
-        p = np.array(pose[0])
-        goal_p = np.array(goal_pose[0])
-        if np.linalg.norm(p-goal_p) < .3:
-            print(np.linalg.norm(p-goal_p))
-        return np.linalg.norm(p-goal_p) < self.tol
 
     def path_to_vertex(self, conf_start, conf_end, edges):
         '''Returns the total path from start configuration to end configuration.'''
