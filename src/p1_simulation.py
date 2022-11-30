@@ -77,13 +77,21 @@ def main():
 
     # Make true to check out these functions
     if False:
-        print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
-        print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
-        print(get_joint_positions(world.robot, world.arm_joints))
+        #print(get_joint_state(world.robot, joint) for joint in world.arm_joints)
+        #print(get_joint_position(world.robot, joint) for joint in world.arm_joints)
+        #print(get_joint_positions(world.robot, world.arm_joints))
+
+        print(f"Link Start Pose (gripper start pose): {start_pose}")
+
+        print('Base Joints', [get_joint_name(world.robot, joint) for joint in world.base_joints])
+        print(f"joint conf: {get_joint_positions(world.robot, world.base_joints)}")
+        print('Arm Joints', [get_joint_name(world.robot, joint) for joint in world.arm_joints])
+        print(f"joint conf: {get_joint_positions(world.robot, world.arm_joints)}")       
+
         sample_fn = get_sample_fn(world.robot, world.arm_joints)
         print(sample_fn())
         print(f'ik_joints: {get_ik_joints(world.robot, PANDA_INFO, tool_link)}')
-        print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+        #print(f'link pose (gripper pose): {get_link_pose(world.robot, tool_link)}')
         end_pose = multiply(start_pose, Pose(Point(z=1.0)))
         print(f'end_pose: {end_pose}')
         new_pose = start_pose
@@ -97,19 +105,124 @@ def main():
 
     # Make True to see how to move robot
     if False:
-        for i in range(1,3):
+        for i in range(1,8):
             for j in range(4):
+                print(f"i: {i}")
                 goal_joints = list(get_joint_positions(world.robot, world.arm_joints))
+                print(f"The goal joints: {goal_joints}") 
                 goal_joints[-i] = goal_joints[-i] + np.pi/4
+                print(f"The goal joints after delta: {goal_joints}") 
                 set_joint_positions(world.robot, world.arm_joints, goal_joints)
                 print(f'link pose: {get_link_pose(world.robot, tool_link)}')
                 wait_for_user()
-    if True:
+    
+    if False:
         mp = MotionPlanner(rrt_edge_len=.01, rrt_goal_biasing=5, world=world, tol=1e-9)
         plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.2, y=-.4))))
         # print(next(closest_inverse_kinematics(world.robot, PANDA_INFO, tool_link, multiply(start_pose, Pose(Point(x=.01))), max_time=0.5), None))
+    
+    #Make True to see the full extension of robot arm close to counter
+    if True:
+        if True:
+            base_goal = list(get_joint_positions(world.robot, world.base_joints))
+            base_goal[2] = np.pi/2
+            set_joint_positions(world.robot, world.base_joints, base_goal)
+            for i in range(1,130):
+                base_goal[0] = base_goal[0] - 0.01
+                set_joint_positions(world.robot, world.base_joints, base_goal)
+                time.sleep(0.05)
+            wait_for_user()
+            for i in range(1,50):
+                base_goal[1] = base_goal[1] + 0.01
+                set_joint_positions(world.robot, world.base_joints, base_goal)
+                time.sleep(0.05)
+            wait_for_user()
+            goal_joints = list(get_joint_positions(world.robot, world.arm_joints))
+            for i in range(1,8):
+                goal_joints[-i] = 0
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-7] = -np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-7] = -np.pi/2
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-6] = np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-6] = np.pi/2
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-5] = np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-5] = np.pi/2
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-2] = np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-2] = np.pi/2
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-1] = np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-3] = np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-3] = np.pi/2
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-3] = 3*np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-3] = np.pi
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            goal_joints[-2] = 3*np.pi/4
+            set_joint_positions(world.robot, world.arm_joints, goal_joints)
+            wait_for_user()
+            for i in range(1,360):
+                goal_joints[-7] = goal_joints[-7] - np.pi/180
+                set_joint_positions(world.robot, world.arm_joints, goal_joints)
+                time.sleep(0.01)
+            wait_for_user()
+
+        # Make true to test limits of workspace
+        if False:
+            base_goal = list(get_joint_positions(world.robot, world.base_joints))
+            base_goal[0] = 0
+            set_joint_positions(world.robot, world.base_joints, base_goal)
+            wait_for_user()
+            base_goal[1] = -1.5
+            set_joint_positions(world.robot, world.base_joints, base_goal)
+        
+        
+        
+        #Print the pose of the gripper and items to see if reachable
+        print(f'link pose: {get_link_pose(world.robot, tool_link)}')
+        print('Base Joints', [get_joint_name(world.robot, joint) for joint in world.base_joints])
+        print(f"base location: {get_joint_positions(world.robot, world.base_joints)}")
         wait_for_user()
-        mp.execute_motion_plan(plan)
+    
+    if False:
+        print(get_joint_positions(world.robot, world.base_joints))
+        #wait_for_user()
+        mp = MotionPlanner(.1, world, tol=.1)
+        base_plan = mp.base_rrt(get_joint_positions(world.robot, world.base_joints), (0.71, 0.49, np.pi/2))
+        #print(base_plan)
+        wait_for_user()
+        mp.execute_base_motion_plan(base_plan)
+
+    if False:
+        mp = MotionPlanner(.4, world, tol=.1)
+        plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.3, z=.3))))
+        wait_for_user()
+        mp.execute_motion_plan(plan) 
+        
+    
 
 
     tool_link = link_from_name(world.robot, 'panda_hand')
