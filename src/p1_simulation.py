@@ -117,7 +117,7 @@ def main():
                 wait_for_user()
     
     if False:
-        mp = MotionPlanner(rrt_edge_len=.01, rrt_goal_biasing=5, world=world, tol=1e-9)
+        mp = MotionPlanner(rrt_edge_len_arm=.01, rrt_goal_biasing=5, world=world, tol=1e-9)
         plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.2, y=-.4))))
         # print(next(closest_inverse_kinematics(world.robot, PANDA_INFO, tool_link, multiply(start_pose, Pose(Point(x=.01))), max_time=0.5), None))
     
@@ -210,14 +210,14 @@ def main():
     if False:
         print(get_joint_positions(world.robot, world.base_joints))
         #wait_for_user()
-        mp = MotionPlanner(.1, world, tol=.1)
+        mp = MotionPlanner(rrt_edge_len_base_xy=.1, world=world, tol=.1)
         base_plan = mp.base_rrt(get_joint_positions(world.robot, world.base_joints), (0.71, 0.49, np.pi/2))
         #print(base_plan)
         wait_for_user()
         mp.execute_base_motion_plan(base_plan)
 
     if False:
-        mp = MotionPlanner(.4, world, tol=.1)
+        mp = MotionPlanner(rrt_edge_len_base_xy=.4, world=world, tol=.1)
         plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.3, z=.3))))
         wait_for_user()
         mp.execute_motion_plan(plan) 

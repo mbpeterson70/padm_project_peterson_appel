@@ -22,8 +22,11 @@ class MotionPlanner():
     Creates a plan to move gripper from some initial configuration to a goal pose.
     '''
 
-    def __init__(self, rrt_edge_len=.2, rrt_goal_biasing=5, world=None, tol=1e-9):
-        self.edge_len = rrt_edge_len
+    def __init__(self, rrt_edge_len_arm=.2, rrt_edge_len_base_xy=.1, rrt_edge_len_base_psi=np.pi/25,
+        rrt_goal_biasing=5, world=None, tol=1e-9):
+        self.edge_len_arm = rrt_edge_len_arm
+        self.edge_len_base_xy = rrt_edge_len_base_xy
+        self.edge_len_base_psi = rrt_edge_len_base_psi
         self.goal_biasing = rrt_goal_biasing
         self.world = world
         lower_limits, upper_limits = \
@@ -52,9 +55,9 @@ class MotionPlanner():
             else:
                 conf_rand = self.get_random_configuration()
             conf_nearest, conf_nearest_dist = self.nearest_conf(vertices, conf_rand)
-            if conf_nearest_dist > self.edge_len:
+            if conf_nearest_dist > self.edge_len_arm:
                 conf_new = np.array(conf_nearest) + \
-                    (np.array(conf_rand)-np.array(conf_nearest)) * self.edge_len / conf_nearest_dist
+                    (np.array(conf_rand)-np.array(conf_nearest)) * self.edge_len_arm / conf_nearest_dist
                 conf_new = tuple(conf_new.tolist())
             else:
                 conf_new = conf_rand
@@ -205,8 +208,8 @@ class MotionPlanner():
         (x_rand, y_rand, yaw_rand) = rand_base_pose
 
         # Steer in direction of rand based on edge length limit
-        xy_limit = self.edge_len
-        yaw_limit = np.pi/25
+        xy_limit = self.edge_len_base_xy
+        yaw_limit = self.edge_len_base_psi
 
         # Calculate the angle between the nearest heading angle and the angle required to move to the nearest point
 
