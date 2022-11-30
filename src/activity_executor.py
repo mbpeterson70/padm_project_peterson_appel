@@ -1,8 +1,12 @@
+from motion_planner import MotionPlanner
+
+from pybullet_tools.utils import get_joint_positions, wait_for_user
 class ActivityExecutor():
 
-    def __init__(self, activity_plan):
+    def __init__(self, activity_plan, world):
         self.activity_plan = activity_plan
         self.activity_idx = 0
+        self.mp = MotionPlanner(rrt_edge_len_arm=.01, rrt_edge_len_base_xy=.1, world=world, tol=1e-9)
 
     def next_activity(self):
         activity = self.activity_plan[self.activity_idx]
@@ -20,9 +24,13 @@ class ActivityExecutor():
             self.move_item_to_drawer(activity.parameters)
         elif activity.name == 'move-gripper-from-drawer':
             self.move_gripper_from_drawer(activity.parameters)
+        self.activity_idx += 1
 
     def move_to_base(self, params):
-        pass
+        base_plan = self.mp.base_rrt(get_joint_positions(self.world.robot, self.world.base_joints), (0.71, 0.49, np.pi/2))
+        #print(base_plan)
+        wait_for_user()
+        self.mp.execute_base_motion_plan(base_plan)
 
     def move_gripper(self, params):
         pass
