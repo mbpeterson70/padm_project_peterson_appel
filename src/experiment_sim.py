@@ -216,11 +216,32 @@ def main():
         wait_for_user()
         mp.execute_base_motion_plan(base_plan)
 
-    if True:
+    if False:
         mp = MotionPlanner(rrt_edge_len_arm=.1, world=world, tol=.1)
         plan = mp.motion_plan_rrt(multiply(start_pose, Pose(Point(x=.3, z=.3))))#, conf_start=get_joint_positions(world.robot, world.arm_joints))
         wait_for_user()
         mp.execute_motion_plan(plan) 
+
+    if True:
+        idx=0
+        ycb_type = 'sugar_box'
+        name = name_from_type(ycb_type, idx)
+        body = world.get_body(name)
+        print('yo I\'m getting the pose')
+        print(get_pose(body))
+
+        surface_name = 'hitman_tmp'
+        surface_aabb = compute_surface_aabb(world, surface_name)
+        print(surface_aabb)
+        surface_name = 'indigo_tmp'
+        surface_aabb = compute_surface_aabb(world, surface_name)
+        print(surface_aabb)
+        surface_name = 'range'
+        surface_aabb = compute_surface_aabb(world, surface_name)
+        print(surface_aabb)
+        surface_name = 'front_right_stove'
+        surface_aabb = compute_surface_aabb(world, surface_name)
+        print(surface_aabb)
         
     
 

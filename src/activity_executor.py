@@ -4,7 +4,8 @@ from motion_planner import MotionPlanner
 import world_params as wp
 
 from pybullet_tools.utils import get_joint_positions, wait_for_user, get_link_pose, \
-    link_from_name, plan_cartesian_motion, set_joint_positions, get_joint
+    link_from_name, plan_cartesian_motion, set_joint_positions, get_joint, get_joint_position, \
+    set_joint_position
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO
 from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
 
@@ -60,28 +61,41 @@ class ActivityExecutor():
             handle_link = link_from_name(self.world.kitchen, wp.HANDLE_NAME)
             handle_pose = get_link_pose(self.world.kitchen, handle_link)
             goal_pose = ((handle_pose[0]), wp.ATT_AT_HANDLE)
-            motion_plan = self.mp.motion_plan_rrt(goal_pose)
-            self.mp.execute_motion_plan(motion_plan) 
+        elif end_loc == 'on-counter':
+            countertop_link = link_from_name(self.world.kitchen, 'indigo_countertop')
+            countertop_z = get_link_pose(self.world.kitchen, countertop_link)[0][2]
+            countertop_position = tuple([wp.POSE_ON_COUNTER[0], wp.POSE_ON_COUNTER[1], 
+                wp.POSE_ON_COUNTER[2] + countertop_z])
+            goal_pose = (countertop_position, wp.ATT_ON_COUNTER)
+        elif end_loc == 'on-burner':
+            goal_pose = (wp.POSE_ON_BURNER, wp.ATT_ON_BURNER)
+        motion_plan = self.mp.motion_plan_rrt(goal_pose)
+        self.mp.execute_motion_plan(motion_plan) 
+
 
     def grab_handle(self, params):
         self.grabbing = wp.HANDLE_NAME
 
     def open_drawer(self, params):
-        assert self.grabbing == wp.HANDLE_NAME
-        interp_vec = np.array(wp.DRAWER_OPEN_DIR) * wp.DRAWER_OPEN_DIST / wp.DRAWER_INTERP_NUM
+        self.move_drawer(1)
+        
+    def close_drawer(self, params):
+        self.move_drawer(-1)
+
+    def move_drawer(self, sign):
+        # assert self.grabbing == wp.HANDLE_NAME
+        interp_vec = sign*np.array(wp.DRAWER_OPEN_DIR) * wp.DRAWER_OPEN_DIST / wp.DRAWER_INTERP_NUM
         for i in range(wp.DRAWER_INTERP_NUM):
             gripper_link = link_from_name(self.world.robot, 'right_gripper')
             gripper_pose = get_link_pose(self.world.robot, gripper_link)
             goal_position = tuple((np.array(gripper_pose[0]) + interp_vec).tolist())
-            print(gripper_pose)
-            print(goal_position)
             goal_pose = (goal_position, gripper_pose[1])
             motion_plan = self.mp.motion_plan_rrt(goal_pose)
             self.mp.execute_motion_plan(motion_plan) 
-            set_joint_positions(self.world.kitchen, [get_joint(self.world.kitchen, 'indigo_drawer_top_joint')], [i*wp.DRAWER_OPEN_DIST / (wp.DRAWER_INTERP_NUM*wp.DRAWER_OPEN_SCALE)])
-
-    def close_drawer(self, params):
-        pass
+            drawer_joint = get_joint(self.world.kitchen, 'indigo_drawer_top_joint')
+            drawer_conf = get_joint_position(self.world.kitchen, drawer_joint)
+            set_joint_position(self.world.kitchen, drawer_joint, \
+                drawer_conf + sign*wp.DRAWER_OPEN_DIST / (wp.DRAWER_INTERP_NUM*wp.DRAWER_OPEN_SCALE))
     
     def grab_item(self, params):
         pass
