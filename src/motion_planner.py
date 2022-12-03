@@ -29,10 +29,10 @@ class MotionPlanner():
         self.edge_len_base_psi = rrt_edge_len_base_psi
         self.goal_biasing = rrt_goal_biasing
         self.world = world
-        lower_limits, upper_limits = \
+        self.lower_limits, self.upper_limits = \
             get_custom_limits(self.world.robot, self.world.arm_joints, {}, circular_limits=CIRCULAR_LIMITS)
-        self.generator = generator = interval_generator(lower_limits, upper_limits)
-        self.tool_link = link_from_name(self.world.robot, 'panda_hand')
+        self.generator = interval_generator(self.lower_limits, self.upper_limits)
+        self.tool_link = link_from_name(self.world.robot, 'right_gripper')
         self.tol = tol
 
     def execute_motion_plan(self, plan):
@@ -40,12 +40,16 @@ class MotionPlanner():
             set_joint_positions(self.world.robot, self.world.arm_joints, conf)
             sleep(.01)
 
-    def motion_plan_rrt(self, conf_start, goal_pose):
+    def motion_plan_rrt(self, goal_pose, conf_start=None):
         '''
         RRT algorithm to move from start configuration (series of joint angles) to 
         goal pose (gripper position and orientation.
         '''
+
+        if conf_start == None:
+            conf_start = get_joint_positions(self.world.robot, self.world.arm_joints)
         goal_conf = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
+        goal_conf = self.unwrap_conf(conf_start, goal_conf)
         vertices = {conf_start}
         edges = dict()
 
@@ -61,7 +65,6 @@ class MotionPlanner():
                 conf_new = tuple(conf_new.tolist())
             else:
                 conf_new = conf_rand
-            print(conf_new)
             # TODO: Check for collision here!!
             collision_free = self.collision_check(conf_new, self.world)
             if collision_free:
@@ -70,6 +73,24 @@ class MotionPlanner():
                 if np.linalg.norm(np.array(conf_new) - np.array(goal_conf)) < self.tol:
                     solution_path = self.path_to_vertex(conf_start, conf_new, edges)
                     return solution_path
+
+    def unwrap_conf(self, ref_conf, wrapped_conf):
+        unwrapped_conf = []
+        for i in range(len(ref_conf)):
+            if np.abs(wrapped_conf[i] - ref_conf[i]) < np.pi:
+                unwrapped_conf.append(wrapped_conf[i])
+            else:
+                diff = (wrapped_conf[i] % (2*np.pi)) - (ref_conf[i] % (2*np.pi))
+                if abs(diff) < np.pi:
+                    new_angle = ref_conf[i] + diff
+                else:
+                    new_angle = ref_conf[i] + diff - np.sign(diff)*2*np.pi
+                while new_angle > self.upper_limits[i]:
+                    new_angle -= 2*np.pi
+                while new_angle < self.lower_limits[i]:
+                    new_angle += 2*np.pi
+                unwrapped_conf.append(new_angle)  
+        return unwrapped_conf
 
     def get_random_configuration(self):
         '''Samples a random arm configuration (series of angles).'''
@@ -93,10 +114,12 @@ class MotionPlanner():
 
 #**********************************************************  RRT FOR BASE ***************************************************************#
 
-    def base_rrt(self, base_start_pose, goal_pose):
+    def base_rrt(self, goal_pose, base_start_pose=None):
         '''
         RRT algorithm that creates a motion plan for the base of the robot, accounts for dynamic constraints
         '''
+        if base_start_pose == None:
+            base_start_pose = get_joint_positions(self.world.robot, self.world.base_joints)
         vertices = {base_start_pose}
         edges = dict()
         N = 0

@@ -207,7 +207,7 @@ def main():
         print(f"base location: {get_joint_positions(world.robot, world.base_joints)}")
         wait_for_user()
     
-    if True:
+    if False:
         print(get_joint_positions(world.robot, world.base_joints))
         #wait_for_user()
         mp = MotionPlanner(rrt_edge_len_base_xy=.1, world=world, tol=.1)
@@ -216,9 +216,9 @@ def main():
         wait_for_user()
         mp.execute_base_motion_plan(base_plan)
 
-    if False:
-        mp = MotionPlanner(rrt_edge_len_base_xy=.4, world=world, tol=.1)
-        plan = mp.motion_plan_rrt(get_joint_positions(world.robot, world.arm_joints), multiply(start_pose, Pose(Point(x=.3, z=.3))))
+    if True:
+        mp = MotionPlanner(rrt_edge_len_arm=.1, world=world, tol=.1)
+        plan = mp.motion_plan_rrt(multiply(start_pose, Pose(Point(x=.3, z=.3))))#, conf_start=get_joint_positions(world.robot, world.arm_joints))
         wait_for_user()
         mp.execute_motion_plan(plan) 
         
