@@ -34,11 +34,18 @@ class MotionPlanner():
         self.generator = interval_generator(self.lower_limits, self.upper_limits)
         self.tool_link = link_from_name(self.world.robot, 'right_gripper')
         self.tol = tol
+        self.visual = True
 
-    def execute_motion_plan(self, plan):
+    def execute_motion_plan(self, plan, item=None):
+        if item is not None:
+            body_name = self.world.get_body(item)
         for conf in plan:
             set_joint_positions(self.world.robot, self.world.arm_joints, conf)
-            sleep(.01)
+            gripper_pose = get_link_pose(self.world.robot, self.tool_link)
+            if item is not None:
+                set_pose(body_name, gripper_pose)
+            if self.visual:
+                sleep(.01)
 
     def motion_plan_rrt(self, goal_pose, conf_start=None):
         '''
