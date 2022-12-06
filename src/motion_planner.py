@@ -3,8 +3,8 @@ import random
 import numpy as np
 import math
 from scipy.spatial import KDTree
+from scipy.spatial.transform import Rotation
 from time import sleep
-from copy import deepcopy
 
 # can get inverse kinematics from pybullet tools ikfast -> inverse kinematics to find 
 
@@ -37,14 +37,23 @@ class MotionPlanner():
         self.tol = tol
         self.visual = True
 
-    def execute_motion_plan(self, plan, item=None):
+    def execute_motion_plan(self, plan, item=None, item_rot_init=None):
         if item is not None:
+            print(item_rot_init)
+            assert item_rot_init is not None
             body_name = self.world.get_body(item)
+            pose_gripper_init = gripper_pose = get_link_pose(self.world.robot, self.tool_link)
+            rot_gripper_init = Rotation.from_quat(pose_gripper_init[1]) # initial rotation
+            # item_rot_init = Rotation.from_quat(item_quat_init)
         for conf in plan:
             set_joint_positions(self.world.robot, self.world.arm_joints, conf)
-            gripper_pose = get_link_pose(self.world.robot, self.tool_link)
             if item is not None:
-                set_pose(body_name, gripper_pose)
+                gripper_pose = get_link_pose(self.world.robot, self.tool_link)
+                gripper_rot = Rotation.from_quat(gripper_pose[1])
+                item_rot_matrix =  gripper_rot.as_matrix() @ rot_gripper_init.as_matrix().T @ \
+                    item_rot_init.as_matrix()
+                item_rot_q = Rotation.from_matrix(item_rot_matrix).as_quat()
+                set_pose(body_name, (gripper_pose[0], tuple(item_rot_q.tolist())))
             if self.visual:
                 sleep(.01)
 
@@ -130,7 +139,7 @@ class MotionPlanner():
         while True:
             N += 1
 
-            if N % 5 == 0:
+            if N % 2 == 0:
                 # Goal bias every 10 cycle iterations
                 rand_base_pose = goal_pose
             else:

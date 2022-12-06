@@ -1,11 +1,12 @@
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 from motion_planner import MotionPlanner
 import world_params as wp
 
 from pybullet_tools.utils import get_joint_positions, wait_for_user, get_link_pose, \
     link_from_name, plan_cartesian_motion, set_joint_positions, get_joint, get_joint_position, \
-    set_joint_position
+    set_joint_position, get_pose, set_pose
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO
 from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
 from src.utils import name_from_type
@@ -18,6 +19,8 @@ class ActivityExecutor():
         self.mp = MotionPlanner(rrt_edge_len_arm=.01, rrt_edge_len_base_xy=.1, world=world, tol=1e-9)
         self.world = world
         self.grabbing = None
+        self.item_in_drawer = None
+        self.testing_mode = False
 
     def execute_activity_plan(self):
         while self.activity_idx < len(self.activity_plan):
@@ -45,9 +48,9 @@ class ActivityExecutor():
         self.activity_idx += 1
 
     def move_to_base(self, params):
-        #TODO: DELETE
-        gripper_link = link_from_name(self.world.robot, 'panda_hand')
-        print(get_link_pose(self.world.robot, gripper_link))
+        if self.testing_mode:
+            set_joint_positions(self.world.robot, self.world.base_joints, (0.67, .57, np.pi/2))
+            return
         base_plan = self.mp.base_rrt(wp.BASE_COUNTER_POSE)
         #print(base_plan)
         wait_for_user()
@@ -63,6 +66,8 @@ class ActivityExecutor():
             start_loc = params[2]
             end_loc = params[3]
         if end_loc == 'at-handle':
+            if self.testing_mode:
+                return
             handle_link = link_from_name(self.world.kitchen, wp.HANDLE_NAME)
             handle_pose = get_link_pose(self.world.kitchen, handle_link)
             handle_position = tuple([handle_pose[0][0], handle_pose[0][1]-.1, handle_pose[0][2]])
@@ -72,7 +77,10 @@ class ActivityExecutor():
             countertop_z = get_link_pose(self.world.kitchen, countertop_link)[0][2]
             countertop_position = tuple([wp.POSE_ON_COUNTER[0], wp.POSE_ON_COUNTER[1], 
                 wp.POSE_ON_COUNTER[2] + countertop_z])
-            goal_pose = (countertop_position, wp.ATT_ON_COUNTER)
+            if self.grabbing:
+                goal_pose = (countertop_position, wp.ATT_ON_BURNER)
+            else:
+                goal_pose = (countertop_position, wp.ATT_ON_COUNTER)
         elif end_loc == 'on-burner':
             burner_link = link_from_name(self.world.kitchen, 'front_right_stove')
             burner_z = get_link_pose(self.world.kitchen, burner_link)[0][2]
@@ -83,7 +91,8 @@ class ActivityExecutor():
         if self.grabbing is None:
             self.mp.execute_motion_plan(motion_plan) 
         else:
-            self.mp.execute_motion_plan(motion_plan, self.grabbing)
+            item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
+            self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
 
 
     def grab_handle(self, params):
@@ -111,22 +120,34 @@ class ActivityExecutor():
             gripper_pose = get_link_pose(self.world.robot, gripper_link)
             goal_position = tuple((np.array(gripper_pose[0]) + interp_vec).tolist())
             goal_pose = (goal_position, gripper_pose[1])
-            motion_plan = self.mp.motion_plan_rrt(goal_pose)
-            self.mp.execute_motion_plan(motion_plan) 
+            if not self.testing_mode:
+                motion_plan = self.mp.motion_plan_rrt(goal_pose)
+                self.mp.execute_motion_plan(motion_plan) 
             drawer_joint = get_joint(self.world.kitchen, 'indigo_drawer_top_joint')
             drawer_conf = get_joint_position(self.world.kitchen, drawer_joint)
             set_joint_position(self.world.kitchen, drawer_joint, \
                 drawer_conf + sign*wp.DRAWER_OPEN_DIST / (wp.DRAWER_INTERP_NUM*wp.DRAWER_OPEN_SCALE))
+            if self.item_in_drawer is not None:
+                body_name = self.world.get_body(self.item_in_drawer)
+                item_pose = get_pose(body_name)
+                item_position = np.array(item_pose[0])
+                new_position = item_position + interp_vec
+                set_pose(body_name, ((new_position.tolist()), item_pose[1]))
     
     def release_object(self, params):
         self.grabbing = None
     
     def move_item_to_drawer(self, params):
+        gripper = params[0]
+        item = params[1]
+        if item == 'sp':
+            self.item_in_drawer = wp.SPAM_NAME
         drawer_link = link_from_name(self.world.kitchen, wp.DRAWER_NAME)
         drawer_pose = get_link_pose(self.world.kitchen, drawer_link)
         goal_pose = ((drawer_pose[0]), wp.ATT_ON_COUNTER)
         motion_plan = self.mp.motion_plan_rrt(goal_pose)
-        self.mp.execute_motion_plan(motion_plan, self.grabbing) 
+        item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
+        self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
     
     def move_gripper_from_drawer(self, params):
         pass
