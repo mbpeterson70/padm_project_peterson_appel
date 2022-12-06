@@ -123,7 +123,7 @@ class MotionPlanner():
         while True:
             N += 1
 
-            if N % 8 == 0:
+            if N % 5 == 0:
                 # Goal bias every 10 cycle iterations
                 rand_base_pose = goal_pose
             else:
@@ -290,8 +290,8 @@ class MotionPlanner():
         (x_goal, y_goal, yaw_goal) = goal_pose
 
         # Define the margin of error for position and yaw
-        position_bound = 0.1
-        yaw_bound = np.pi/32
+        position_bound = 0.01
+        yaw_bound = np.pi/90
 
         # Initialize booleans for x, y and yaw
         x_within_bound = False
@@ -335,8 +335,8 @@ class MotionPlanner():
 
         turn_list = np.linspace(np.pi, np.pi/2, 16)
         
-        clone_move_list = np.linspace(-1, 0.41, 10)
-        bot_move_list = np.linspace(-1, 0.41, 100)
+        clone_move_list = np.linspace(-1, 0.51, 10)
+        bot_move_list = np.linspace(-1, 0.51, 100)
         
 
         # move the clone_bot without visually sleeping the sim
