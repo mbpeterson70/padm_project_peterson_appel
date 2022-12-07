@@ -92,7 +92,8 @@ class ActivityExecutor():
             self.mp.execute_motion_plan(motion_plan) 
         else:
             item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
-            self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
+            item_tran_init = self.get_grabbing_translation()
+            self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
 
 
     def grab_handle(self, params):
@@ -144,13 +145,23 @@ class ActivityExecutor():
             self.item_in_drawer = wp.SPAM_NAME
         drawer_link = link_from_name(self.world.kitchen, wp.DRAWER_NAME)
         drawer_pose = get_link_pose(self.world.kitchen, drawer_link)
-        goal_pose = ((drawer_pose[0]), wp.ATT_ON_COUNTER)
+        gripper_drawer_position = tuple([drawer_pose[0][0], drawer_pose[0][1], 
+            drawer_pose[0][2] + .1])
+        goal_pose = (gripper_drawer_position, wp.ATT_ON_COUNTER)
         motion_plan = self.mp.motion_plan_rrt(goal_pose)
         item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
-        self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
+        item_tran_init = self.get_grabbing_translation()
+        self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
     
     def move_gripper_from_drawer(self, params):
         pass
+
+    def get_grabbing_translation(self):
+        if self.grabbing == wp.SPAM_NAME:
+            item_tran_init = [0, 0, -.1]
+        elif self.grabbing == wp.SUGAR_NAME:
+            item_tran_init = [0, .05, -.1]
+        return item_tran_init
     
     
 

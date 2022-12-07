@@ -37,10 +37,10 @@ class MotionPlanner():
         self.tol = tol
         self.visual = True
 
-    def execute_motion_plan(self, plan, item=None, item_rot_init=None):
+    def execute_motion_plan(self, plan, item=None, item_rot_init=None, item_trans_init=None):
         if item is not None:
-            print(item_rot_init)
             assert item_rot_init is not None
+            assert item_trans_init is not None
             body_name = self.world.get_body(item)
             pose_gripper_init = gripper_pose = get_link_pose(self.world.robot, self.tool_link)
             rot_gripper_init = Rotation.from_quat(pose_gripper_init[1]) # initial rotation
@@ -53,7 +53,9 @@ class MotionPlanner():
                 item_rot_matrix =  gripper_rot.as_matrix() @ rot_gripper_init.as_matrix().T @ \
                     item_rot_init.as_matrix()
                 item_rot_q = Rotation.from_matrix(item_rot_matrix).as_quat()
-                set_pose(body_name, (gripper_pose[0], tuple(item_rot_q.tolist())))
+                item_position = np.array(gripper_pose[0]).reshape((3,1)) + \
+                    item_rot_matrix @ np.array(item_trans_init).reshape((3,1))
+                set_pose(body_name, (tuple(item_position.reshape(-1).tolist()), tuple(item_rot_q.tolist())))
             if self.visual:
                 sleep(.01)
 
