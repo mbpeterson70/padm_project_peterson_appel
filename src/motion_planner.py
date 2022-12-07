@@ -306,8 +306,8 @@ class MotionPlanner():
         (x_goal, y_goal, yaw_goal) = goal_pose
 
         # Define the margin of error for position and yaw
-        position_bound = 0.01
-        yaw_bound = np.pi/90
+        position_bound = 0.1
+        yaw_bound = np.pi/16
 
         # Initialize booleans for x, y and yaw
         x_within_bound = False
@@ -344,9 +344,9 @@ class MotionPlanner():
             set_joint_positions(self.world.robot, self.world.base_joints, pose)
             sleep(.1)
 
-    def turn_and_drive(self):
-        # set_joint_positions(self.clone_bot, self.clone_bot_joints, (0.71, -1, np.pi))
-        # set_joint_positions(self.world.robot, self.world.base_joints, (0.71, -1, np.pi))
+    def turn_and_drive(self, goal_pose, base_start_pose=None):
+        set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), goal_pose)
+        set_joint_positions(self.world.robot, self.world.base_joints, goal_pose)
         (start_x, start_y, start_yaw) = get_joint_positions(self.world.robot, self.world.base_joints)
 
         turn_list = np.linspace(np.pi, np.pi/2, 16)
@@ -367,7 +367,7 @@ class MotionPlanner():
             sleep(.1)
         for move in bot_move_list:
             set_joint_positions(self.world.robot, self.world.base_joints, (start_x, move, np.pi/2))
-            sleep(.1)
+            sleep(.04)
         
 
         return

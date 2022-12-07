@@ -55,7 +55,7 @@ class ActivityExecutor():
         #print(base_plan)
         wait_for_user()
         self.mp.execute_base_motion_plan(base_plan)
-        self.mp.turn_and_drive()
+        self.mp.turn_and_drive(wp.BASE_COUNTER_POSE)
 
     def move_gripper(self, params):
         gripper = params[0]
