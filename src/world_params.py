@@ -2,7 +2,7 @@ import numpy as np
 
 # Positions
 # BASE_COUNTER_POSE = (0.71, 0.49+.2, np.pi/2)
-BASE_COUNTER_POSE = (0.67, -1.1, np.pi)
+BASE_COUNTER_POSE = (0.69, -1.1, np.pi)
 POSE_ON_COUNTER = (.2, 1.1, 0.1) 
 POSE_ON_BURNER = (-0.06-.11, 0.5+.11, .1) # (-0.06-.05, 0.5+.05, .1)
 
