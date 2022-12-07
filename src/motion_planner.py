@@ -65,7 +65,15 @@ class MotionPlanner():
 
         if conf_start == None:
             conf_start = get_joint_positions(self.world.robot, self.world.arm_joints)
-        goal_conf = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
+        
+        goal_conf = None
+        i = 0
+        max_iter = 10
+        while goal_conf == None and i < max_iter:
+            i += 1
+            goal_conf = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
+        
+        assert goal_conf != None, 'Failed to find goal configuration for arm'
         goal_conf = self.unwrap_conf(conf_start, goal_conf)
         vertices = {conf_start}
         edges = dict()
