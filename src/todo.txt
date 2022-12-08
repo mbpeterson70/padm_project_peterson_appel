@@ -1,0 +1,6 @@
+- Collisions with arms
+- Delete clone arm when robot does actual move?
+- Line up gripper with objects correctly (drawer and spam)
+- Open and close gripper
+- Handle rotations of objects
+- Make spam move with drawer

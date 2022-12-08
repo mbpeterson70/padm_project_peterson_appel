@@ -28,6 +28,7 @@ from src.utils import JOINT_TEMPLATE, BLOCK_SIZES, BLOCK_COLORS, COUNTERS, \
 
 from activity_planner import ActivityPlanner
 from motion_planner import MotionPlanner
+import world_params as wp
 
 UNIT_POSE2D = (0., 0., 0.)
 
@@ -222,7 +223,7 @@ def main():
         wait_for_user()
         mp.execute_motion_plan(plan) 
 
-    if True:
+    if False:
         idx=0
         ycb_type = 'sugar_box'
         name = name_from_type(ycb_type, idx)
@@ -242,6 +243,10 @@ def main():
         surface_name = 'front_right_stove'
         surface_aabb = compute_surface_aabb(world, surface_name)
         print(surface_aabb)
+
+    if True:
+        print(world.get_body(wp.SPAM_NAME)) #5
+        print(world.get_body(wp.SUGAR_NAME)) #4
         
     
 

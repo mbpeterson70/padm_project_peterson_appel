@@ -76,12 +76,31 @@ class MotionPlanner():
         goal_conf = None
         i = 0
         max_iter = 10
+        rot = Rotation.from_quat(goal_pose[1]).as_matrix()
+        rot180 = Rotation.from_euler('xyz', [180, 0, 0], degrees=True).as_matrix()
+        goal_pose_rot180 = (goal_pose[0], tuple(Rotation.from_matrix(rot180 @ rot).as_quat()))
         while goal_conf == None and i < max_iter:
             i += 1
-            goal_conf = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
-        
+            goal_conf1 = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
+            goal_conf2 = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose_rot180, max_time=0.05), None)
+            if goal_conf1 == None and goal_conf2 == None:
+                continue
+            if goal_conf2 == None:
+                goal_conf = self.unwrap_conf(conf_start, goal_conf1)
+            elif goal_conf1 == None:
+                goal_conf = self.unwrap_conf(conf_start, goal_conf2)
+            else:
+                goal_conf1 = self.unwrap_conf(conf_start, goal_conf1)
+                goal_conf2 = self.unwrap_conf(conf_start, goal_conf2)
+                norm1 = np.linalg.norm(np.array(goal_conf1) - np.array(conf_start))
+                norm2 = np.linalg.norm(np.array(goal_conf2) - np.array(conf_start))
+                if norm1 < norm2:
+                    goal_conf = goal_conf1
+                else:
+                    goal_conf = goal_conf2
+
+
         assert goal_conf != None, 'Failed to find goal configuration for arm'
-        goal_conf = self.unwrap_conf(conf_start, goal_conf)
         vertices = {conf_start}
         edges = dict()
         start_time = time()
