@@ -77,6 +77,8 @@ class ActivityExecutor():
             countertop_z = get_link_pose(self.world.kitchen, countertop_link)[0][2]
             countertop_position = tuple([wp.POSE_ON_COUNTER[0], wp.POSE_ON_COUNTER[1], 
                 wp.POSE_ON_COUNTER[2] + countertop_z])
+            if start_loc == 'on-burner':
+                self.move_away_from_objects
             if self.grabbing:
                 goal_pose = (countertop_position, wp.ATT_ON_BURNER)
             else:
@@ -87,13 +89,13 @@ class ActivityExecutor():
             burner_position = tuple([wp.POSE_ON_BURNER[0], wp.POSE_ON_BURNER[1],
                 wp.POSE_ON_BURNER[2] + burner_z])
             goal_pose = (burner_position, wp.ATT_ON_BURNER)
+            self.move_away_from_objects()
         motion_plan = self.mp.motion_plan_rrt(goal_pose)
         if self.grabbing is None:
             self.mp.execute_motion_plan(motion_plan) 
         else:
             item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
             self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
-
 
     def grab_handle(self, params):
         self.grabbing = wp.HANDLE_NAME
@@ -121,7 +123,7 @@ class ActivityExecutor():
             goal_position = tuple((np.array(gripper_pose[0]) + interp_vec).tolist())
             goal_pose = (goal_position, gripper_pose[1])
             if not self.testing_mode:
-                motion_plan = self.mp.motion_plan_rrt(goal_pose)
+                motion_plan = self.mp.motion_plan_rrt(goal_pose, collision=False)
                 self.mp.execute_motion_plan(motion_plan) 
             drawer_joint = get_joint(self.world.kitchen, 'indigo_drawer_top_joint')
             drawer_conf = get_joint_position(self.world.kitchen, drawer_joint)
@@ -134,6 +136,15 @@ class ActivityExecutor():
                 new_position = item_position + interp_vec
                 set_pose(body_name, ((new_position.tolist()), item_pose[1]))
     
+    def move_away_from_objects(self):
+        intermediate_pose = (wp.POSE_AWAY, wp.ATT_AT_HANDLE)
+        motion_plan = self.mp.motion_plan_rrt(intermediate_pose)
+        if self.grabbing is None:
+            self.mp.execute_motion_plan(motion_plan) 
+        else:
+            item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
+            self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init)
+
     def release_object(self, params):
         self.grabbing = None
     

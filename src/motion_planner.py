@@ -10,8 +10,8 @@ from time import sleep, time
 
 from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits, interval_generator, set_joint_positions, \
     link_from_name, get_link_pose, get_joint_positions, set_pose, pairwise_collision, single_collision, get_bodies, get_collision_data, contact_collision, \
-        pairwise_link_collision, any_link_pair_collision, link_pairs_collision, get_all_links, get_link_name, clone_body, get_movable_joints, get_joint_name, get_joints, \
-            get_body_name
+    pairwise_link_collision, any_link_pair_collision, link_pairs_collision, get_all_links, get_link_name, clone_body, get_movable_joints, get_joint_name, get_joints, \
+    get_body_name, remove_body, set_renderer
 from src.utils import are_confs_close, set_tool_pose, get_tool_from_root
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO
 from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
@@ -58,11 +58,15 @@ class MotionPlanner():
             if self.visual:
                 sleep(.01)
 
-    def motion_plan_rrt(self, goal_pose, conf_start=None):
+    def motion_plan_rrt(self, goal_pose, conf_start=None, collision=True):
         '''
         RRT algorithm to move from start configuration (series of joint angles) to 
         goal pose (gripper position and orientation.
         '''
+        if collision:
+            set_renderer(False)
+            self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
+            self.clone_bot_joints = get_joints(self.clone_bot)
 
         if conf_start == None:
             conf_start = get_joint_positions(self.world.robot, self.world.arm_joints)
@@ -90,12 +94,18 @@ class MotionPlanner():
             else:
                 conf_new = conf_rand
             # TODO: Check for collision here!!
-            collision_free = self.collision_check(conf_new, self.clone_bot, self.clone_bot_joints)
+            if collision:
+                collision_free = self.collision_check(conf_new, self.clone_bot, self.clone_bot_joints)
+            else:
+                collision_free = True
             if collision_free:
                 vertices.add(conf_new)
                 edges[conf_new] = conf_nearest
                 if np.linalg.norm(np.array(conf_new) - np.array(goal_conf)) < self.tol:
                     solution_path = self.path_to_vertex(conf_start, conf_new, edges)
+                    if collision:
+                        remove_body(self.clone_bot)
+                        set_renderer(True)
                     return solution_path
 
     def unwrap_conf(self, ref_conf, wrapped_conf):
@@ -170,6 +180,7 @@ class MotionPlanner():
         '''
         RRT algorithm that creates a motion plan for the base of the robot, accounts for dynamic constraints
         '''
+        set_renderer(False)
         if base_start_pose == None:
             base_start_pose = get_joint_positions(self.world.robot, self.world.base_joints)
         vertices = {base_start_pose}
@@ -208,6 +219,8 @@ class MotionPlanner():
                 # Check if you are in the goal region
                 if self.base_close_to_goal(new_pose, goal_pose):
                     solution_path = self.path_to_vertex(base_start_pose, new_pose, edges)
+                    remove_body(self.clone_bot)
+                    set_renderer(True)
                     return solution_path
 
     def random_base_pose(self):
@@ -388,7 +401,7 @@ class MotionPlanner():
             sleep(.1)
 
     def turn_and_drive(self, goal_pose, base_start_pose=None):
-        set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), goal_pose)
+        # set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), goal_pose)
         set_joint_positions(self.world.robot, self.world.base_joints, goal_pose)
         (start_x, start_y, start_yaw) = get_joint_positions(self.world.robot, self.world.base_joints)
 
@@ -399,10 +412,10 @@ class MotionPlanner():
         
   
         # move the clone_bot without visually sleeping the sim
-        for turn in turn_list:
-            set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, start_y, turn))
-        for move in clone_move_list:
-            set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, move, np.pi/2))
+        # for turn in turn_list:
+        #     set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, start_y, turn))
+        # for move in clone_move_list:
+        #     set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, move, np.pi/2))
 
         # move the robot with visual sleep for sim
         for turn in turn_list:
