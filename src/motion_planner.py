@@ -4,13 +4,14 @@ import numpy as np
 import math
 from scipy.spatial import KDTree
 from scipy.spatial.transform import Rotation
-from time import sleep
+from time import sleep, time
 
 # can get inverse kinematics from pybullet tools ikfast -> inverse kinematics to find 
 
 from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits, interval_generator, set_joint_positions, \
     link_from_name, get_link_pose, get_joint_positions, set_pose, pairwise_collision, single_collision, get_bodies, get_collision_data, contact_collision, \
-        pairwise_link_collision, any_link_pair_collision, link_pairs_collision, get_all_links, get_link_name, clone_body, get_movable_joints, get_joint_name
+    pairwise_link_collision, any_link_pair_collision, link_pairs_collision, get_all_links, get_link_name, clone_body, get_movable_joints, get_joint_name, get_joints, \
+    get_body_name, remove_body, set_renderer
 from src.utils import are_confs_close, set_tool_pose, get_tool_from_root
 from pybullet_tools.ikfast.franka_panda.ik import PANDA_INFO
 from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
@@ -59,11 +60,15 @@ class MotionPlanner():
             if self.visual:
                 sleep(.01)
 
-    def motion_plan_rrt(self, goal_pose, conf_start=None):
+    def motion_plan_rrt(self, goal_pose, conf_start=None, collision=True):
         '''
         RRT algorithm to move from start configuration (series of joint angles) to 
         goal pose (gripper position and orientation.
         '''
+        if collision:
+            set_renderer(False)
+            self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
+            self.clone_bot_joints = get_joints(self.clone_bot)
 
         if conf_start == None:
             conf_start = get_joint_positions(self.world.robot, self.world.arm_joints)
@@ -79,8 +84,14 @@ class MotionPlanner():
         goal_conf = self.unwrap_conf(conf_start, goal_conf)
         vertices = {conf_start}
         edges = dict()
+        start_time = time()
 
         for i in range(int(1e20)):
+            if (time() - start_time) > 30:
+                start_time = time()
+                vertices = {conf_start}
+                edges = dict()
+                
             if i % self.goal_biasing == 0:
                 conf_rand = tuple(goal_conf)
             else:
@@ -93,12 +104,18 @@ class MotionPlanner():
             else:
                 conf_new = conf_rand
             # TODO: Check for collision here!!
-            # collision_free = self.collision_check(conf_new, self.world)
-            if True:
+            if collision:
+                collision_free = self.collision_check(conf_new, self.clone_bot, self.clone_bot_joints)
+            else:
+                collision_free = True
+            if collision_free:
                 vertices.add(conf_new)
                 edges[conf_new] = conf_nearest
                 if np.linalg.norm(np.array(conf_new) - np.array(goal_conf)) < self.tol:
                     solution_path = self.path_to_vertex(conf_start, conf_new, edges)
+                    if collision:
+                        remove_body(self.clone_bot)
+                        set_renderer(True)
                     return solution_path
 
     def unwrap_conf(self, ref_conf, wrapped_conf):
@@ -131,12 +148,49 @@ class MotionPlanner():
         closest = vertices_list[closest_idx]
         return closest, closest_dist
 
+    def collision_check(self, conf_new, clone_bot, clone_bot_joints):
+        '''Checks if the new configuration is collision free wrt itself and world'''
+        set_joint_positions(clone_bot, (clone_bot_joints[12], clone_bot_joints[13], clone_bot_joints[14], \
+             clone_bot_joints[15], clone_bot_joints[16], clone_bot_joints[17], clone_bot_joints[18]), conf_new)
+        # body_names = self.world.get_body(item)
+        # for i, body in enumerate(get_bodies()):
+        #     print(f"body name {i}: {get_body_name(body)}")
+        #     for link in get_all_links(body):
+        #         print(f"body: {i} link: {link} name: {get_link_name(body, link)}")
+
+
+        # Now check that the arm does not hit any objects
+        for body in get_bodies():
+            # if body == 6:
+                # look at link -4
+            if body == 0:
+                links = get_all_links(body)
+                link_check = copy.deepcopy(links)
+                link_check.pop(-3)
+                link_check.pop(-1)
+                link_check.pop(-5)
+                link_check.pop(-10)
+                link_check.pop(-8)
+                link_check.pop(-9)
+                link_check.pop(-13)
+                link_check.pop(-14)
+                link_check.pop(-15)
+                clone_check = copy.deepcopy(get_all_links(clone_bot))
+                clone_check1 = []
+                clone_check1.append(clone_check.pop(-4))
+                if any_link_pair_collision(clone_bot, clone_check1, body, link_check):
+                    print('collision')
+                    return False
+            
+        return True
+
 #**********************************************************  RRT FOR BASE ***************************************************************#
 
     def base_rrt(self, goal_pose, base_start_pose=None):
         '''
         RRT algorithm that creates a motion plan for the base of the robot, accounts for dynamic constraints
         '''
+        set_renderer(False)
         if base_start_pose == None:
             base_start_pose = get_joint_positions(self.world.robot, self.world.base_joints)
         vertices = {base_start_pose}
@@ -144,7 +198,7 @@ class MotionPlanner():
         N = 0
 
         self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
-        self.clone_bot_joints = get_movable_joints(self.clone_bot)
+        self.clone_bot_joints = get_joints(self.clone_bot)
 
         while True:
             N += 1
@@ -175,6 +229,8 @@ class MotionPlanner():
                 # Check if you are in the goal region
                 if self.base_close_to_goal(new_pose, goal_pose):
                     solution_path = self.path_to_vertex(base_start_pose, new_pose, edges)
+                    remove_body(self.clone_bot)
+                    set_renderer(True)
                     return solution_path
 
     def random_base_pose(self):
@@ -355,7 +411,7 @@ class MotionPlanner():
             sleep(.1)
 
     def turn_and_drive(self, goal_pose, base_start_pose=None):
-        set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), goal_pose)
+        # set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), goal_pose)
         set_joint_positions(self.world.robot, self.world.base_joints, goal_pose)
         (start_x, start_y, start_yaw) = get_joint_positions(self.world.robot, self.world.base_joints)
 
@@ -364,12 +420,12 @@ class MotionPlanner():
         clone_move_list = np.linspace(-1.1, 0.57, 10)
         bot_move_list = np.linspace(-1.1, 0.57, 100)
         
-
+  
         # move the clone_bot without visually sleeping the sim
-        for turn in turn_list:
-            set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, start_y, turn))
-        for move in clone_move_list:
-            set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, move, np.pi/2))
+        # for turn in turn_list:
+        #     set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, start_y, turn))
+        # for move in clone_move_list:
+        #     set_joint_positions(self.clone_bot, (self.clone_bot_joints[0], self.clone_bot_joints[1], self.clone_bot_joints[2]), (start_x, move, np.pi/2))
 
         # move the robot with visual sleep for sim
         for turn in turn_list:
@@ -378,7 +434,6 @@ class MotionPlanner():
         for move in bot_move_list:
             set_joint_positions(self.world.robot, self.world.base_joints, (start_x, move, np.pi/2))
             sleep(.04)
-        
 
         return
         
