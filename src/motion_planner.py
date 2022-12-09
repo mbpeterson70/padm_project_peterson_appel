@@ -202,7 +202,7 @@ class MotionPlanner():
                 clone_check1 = []
                 clone_check1.append(clone_check.pop(-4))
                 if any_link_pair_collision(clone_bot, clone_check1, body, link_check):
-                    print('collision')
+                    # print('collision')
                     return False
             
         return True
