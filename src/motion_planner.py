@@ -45,7 +45,6 @@ class MotionPlanner():
             body_name = self.world.get_body(item)
             pose_gripper_init = gripper_pose = get_link_pose(self.world.robot, self.tool_link)
             rot_gripper_init = Rotation.from_quat(pose_gripper_init[1]) # initial rotation
-            # item_rot_init = Rotation.from_quat(item_quat_init)
         for conf in plan:
             set_joint_positions(self.world.robot, self.world.arm_joints, conf)
             if item is not None:
@@ -60,55 +59,25 @@ class MotionPlanner():
             if self.visual:
                 sleep(.01)
 
-    def motion_plan_rrt(self, goal_pose, conf_start=None, collision=True):
+    def motion_plan_rrt(self, goal_pose, start_conf=None, collision=True):
         '''
         RRT algorithm to move from start configuration (series of joint angles) to 
         goal pose (gripper position and orientation.
         '''
-        if collision:
-            set_renderer(False)
-            self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
-            self.clone_bot_joints = get_joints(self.clone_bot)
+        self.setup_collision_checking(collision)
 
-        if conf_start == None:
-            conf_start = get_joint_positions(self.world.robot, self.world.arm_joints)
+        if start_conf == None:
+            start_conf = get_joint_positions(self.world.robot, self.world.arm_joints)
         
-        goal_conf = None
-        i = 0
-        max_iter = 10
-        rot = Rotation.from_quat(goal_pose[1]).as_matrix()
-        rot180 = Rotation.from_euler('xyz', [180, 0, 0], degrees=True).as_matrix()
-        goal_pose_rot180 = (goal_pose[0], tuple(Rotation.from_matrix(rot180 @ rot).as_quat()))
-        while goal_conf == None and i < max_iter:
-            i += 1
-            goal_conf1 = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.05), None)
-            goal_conf2 = next(closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose_rot180, max_time=0.05), None)
-            if goal_conf1 == None and goal_conf2 == None:
-                continue
-            if goal_conf2 == None:
-                goal_conf = self.unwrap_conf(conf_start, goal_conf1)
-            elif goal_conf1 == None:
-                goal_conf = self.unwrap_conf(conf_start, goal_conf2)
-            else:
-                goal_conf1 = self.unwrap_conf(conf_start, goal_conf1)
-                goal_conf2 = self.unwrap_conf(conf_start, goal_conf2)
-                norm1 = np.linalg.norm(np.array(goal_conf1) - np.array(conf_start))
-                norm2 = np.linalg.norm(np.array(goal_conf2) - np.array(conf_start))
-                if norm1 < norm2:
-                    goal_conf = goal_conf1
-                else:
-                    goal_conf = goal_conf2
-
-
-        assert goal_conf != None, 'Failed to find goal configuration for arm'
-        vertices = {conf_start}
+        goal_conf = self.get_best_goal_conf(start_conf, goal_pose)
+        vertices = {start_conf}
         edges = dict()
         start_time = time()
 
         for i in range(int(1e20)):
             if (time() - start_time) > 30:
                 start_time = time()
-                vertices = {conf_start}
+                vertices = {start_conf}
                 edges = dict()
                 
             if i % self.goal_biasing == 0:
@@ -131,11 +100,46 @@ class MotionPlanner():
                 vertices.add(conf_new)
                 edges[conf_new] = conf_nearest
                 if np.linalg.norm(np.array(conf_new) - np.array(goal_conf)) < self.tol:
-                    solution_path = self.path_to_vertex(conf_start, conf_new, edges)
+                    solution_path = self.path_to_vertex(start_conf, conf_new, edges)
                     if collision:
                         remove_body(self.clone_bot)
                         set_renderer(True)
                     return solution_path
+
+    def get_best_goal_conf(self, start_conf, goal_pose):
+        best_conf = None
+        i = 0
+        max_iter = 10
+        rot = Rotation.from_quat(goal_pose[1]).as_matrix()
+        rot180 = Rotation.from_euler('xyz', [180, 0, 0], degrees=True).as_matrix()
+        goal_pose_rot180 = (goal_pose[0], tuple(Rotation.from_matrix(rot180 @ rot).as_quat()))
+        while best_conf == None and i < max_iter:
+            i += 1
+            kin_gen1 = closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.2)
+            # kin_gen2 = closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose_rot180, max_time=0.2)
+            kin_gen2 = closest_inverse_kinematics(self.world.robot, PANDA_INFO, self.tool_link, goal_pose, max_time=0.2)
+            goal_conf1 = next(kin_gen1, None)
+            goal_conf2 = next(kin_gen2, None)
+            goal_confs1 = []
+            goal_confs2 = []
+            while goal_conf1 is not None:
+                goal_confs1.append(goal_conf1)
+                goal_conf1 = next(kin_gen1, None)
+            while goal_conf2 is not None:
+                goal_confs2.append(goal_conf2)
+                goal_conf2 = next(kin_gen2, None)
+            if not goal_confs1 and not goal_conf2:
+                continue
+            best_norm = np.inf
+            for conf in goal_confs1 + goal_confs2:
+                # if not self.collision_check(conf, self.clone_bot, self.clone_bot_joints):
+                #     continue
+                norm = np.linalg.norm(np.array(conf) - np.array(start_conf))
+                if norm < best_norm:
+                    best_conf = conf
+                    best_norm = norm
+        assert best_conf != None, 'Failed to find goal configuration for arm'
+        return best_conf
 
     def unwrap_conf(self, ref_conf, wrapped_conf):
         unwrapped_conf = []
@@ -203,21 +207,25 @@ class MotionPlanner():
             
         return True
 
+    def setup_collision_checking(self, collision):
+        if collision:
+            set_renderer(False)
+            self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
+            self.clone_bot_joints = get_joints(self.clone_bot)
+
+
 #**********************************************************  RRT FOR BASE ***************************************************************#
 
     def base_rrt(self, goal_pose, base_start_pose=None):
         '''
         RRT algorithm that creates a motion plan for the base of the robot, accounts for dynamic constraints
         '''
-        set_renderer(False)
+        self.setup_collision_checking(collision=True)
         if base_start_pose == None:
             base_start_pose = get_joint_positions(self.world.robot, self.world.base_joints)
         vertices = {base_start_pose}
         edges = dict()
         N = 0
-
-        self.clone_bot = clone_body(self.world.robot, None, collision=True, visual=False)
-        self.clone_bot_joints = get_joints(self.clone_bot)
 
         while True:
             N += 1

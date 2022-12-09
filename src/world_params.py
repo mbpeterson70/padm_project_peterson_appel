@@ -6,12 +6,14 @@ BASE_COUNTER_POSE = (0.69, -1.1, np.pi)
 POSE_ON_COUNTER = (.2, 1.09, 0.1) 
 POSE_ON_BURNER = (-0.06-.11, 0.5+.11, .1) # (-0.06-.05, 0.5+.05, .1)
 POSE_AWAY = (.03, .66, -.41)
-POSE_AWAY2 = (.15, .17, -.5)
+POSE_AWAY2 = (.35, 1.0, -.35)
 
 # Orientations/Attitudes
 ATT_AT_HANDLE = (.5, .5, -.5, -.5)
 ATT_ON_COUNTER = (.924, .383, 0, 0) #(-.707, 0, .707, 0)
 ATT_ON_BURNER = (.653, -.271, -.653, -.271) #(.924, -.383, 0, 0)
+ATT_AWAY = ATT_ON_BURNER
+ATT_AWAY2 = (.707, 0, 0, -.707)
 
 # Link Names
 HANDLE_NAME = 'indigo_drawer_handle_top'
