@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
+import time
 
 from motion_planner import MotionPlanner
 import world_params as wp
@@ -25,13 +26,14 @@ class ActivityExecutor():
     def execute_activity_plan(self):
         while self.activity_idx < len(self.activity_plan):
             self.next_activity()
-            wait_for_user()
+            # wait_for_user()
 
     def next_activity(self):
         activity = self.activity_plan[self.activity_idx]
         print(f'Performing action: {activity.name} {activity.parameters}')
         if activity.name == 'move-to-base':
             self.move_to_base(activity.parameters)
+            wait_for_user()
         elif activity.name == 'move-gripper' or activity.name == 'move-gripper-from-drawer' \
             or activity.name == 'move-item':
             self.move_gripper(activity.parameters)
@@ -65,11 +67,13 @@ class ActivityExecutor():
         elif len(params) == 4:
             start_loc = params[2]
             end_loc = params[3]
+        motion_plan = []
+
         if end_loc == 'at-handle':
-            if self.testing_mode:
+            if self.testing_mode and start_loc == 'away-from-objects':
                 return
             if start_loc == 'on-counter':
-                self.move_away_from_objects(wp.POSE_AWAY2)
+                motion_plan += self.intermediate_move_away(wp.POSE_AWAY2, wp.ATT_AWAY2)
             handle_link = link_from_name(self.world.kitchen, wp.HANDLE_NAME)
             handle_pose = get_link_pose(self.world.kitchen, handle_link)
             handle_position = tuple([handle_pose[0][0], handle_pose[0][1]-.1, handle_pose[0][2]])
@@ -80,7 +84,7 @@ class ActivityExecutor():
             countertop_position = tuple([wp.POSE_ON_COUNTER[0], wp.POSE_ON_COUNTER[1], 
                 wp.POSE_ON_COUNTER[2] + countertop_z])
             if start_loc == 'on-burner':
-                self.move_away_from_objects(wp.POSE_AWAY)
+                motion_plan += self.intermediate_move_away(wp.POSE_AWAY, wp.ATT_AWAY)
             if self.grabbing:
                 goal_pose = (countertop_position, wp.ATT_ON_BURNER)
             else:
@@ -91,10 +95,13 @@ class ActivityExecutor():
             burner_position = tuple([wp.POSE_ON_BURNER[0], wp.POSE_ON_BURNER[1],
                 wp.POSE_ON_BURNER[2] + burner_z])
             goal_pose = (burner_position, wp.ATT_ON_BURNER)
-            self.move_away_from_objects(wp.POSE_AWAY)
+            motion_plan += self.intermediate_move_away(wp.POSE_AWAY, wp.ATT_AWAY)
         elif end_loc == 'away-from-objects':
             goal_pose = (wp.POSE_AWAY2, wp.ATT_AT_HANDLE)
-        motion_plan = self.mp.motion_plan_rrt(goal_pose)
+        if motion_plan:
+            motion_plan += self.mp.motion_plan_rrt(goal_pose, start_conf=motion_plan[-1])
+        else:
+            motion_plan = self.mp.motion_plan_rrt(goal_pose)
         if self.grabbing is None:
             self.mp.execute_motion_plan(motion_plan) 
         else:
@@ -141,15 +148,16 @@ class ActivityExecutor():
                 new_position = item_position + interp_vec
                 set_pose(body_name, ((new_position.tolist()), item_pose[1]))
     
-    def move_away_from_objects(self, away_position):
-        intermediate_pose = (away_position, wp.ATT_ON_BURNER)
+    def intermediate_move_away(self, away_position, away_attitude):
+        intermediate_pose = (away_position, away_attitude)
         motion_plan = self.mp.motion_plan_rrt(intermediate_pose)
-        if self.grabbing is None:
-            self.mp.execute_motion_plan(motion_plan) 
-        else:
-            item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
-            item_tran_init = self.get_grabbing_translation()
-            self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
+        return motion_plan
+        # if self.grabbing is None:
+        #     self.mp.execute_motion_plan(motion_plan) 
+        # else:
+        #     item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
+        #     item_tran_init = self.get_grabbing_translation()
+        #     self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
 
     def release_object(self, params):
         self.grabbing = None
