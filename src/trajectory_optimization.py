@@ -1,10 +1,8 @@
 import time
 import numpy as np
-from pydrake.all import (AddMultibodyPlantSceneGraph, BsplineTrajectory,
-                         DiagramBuilder, KinematicTrajectoryOptimization,
-                         MinimumDistanceConstraint, Parser, PositionConstraint,
-                         Rgba, RigidTransform, Role, Solve, Sphere,
-                         )
+from scipy.interpolate import BSpline
+
+from pydrake.solvers import MathematicalProgram, Solve
 
 class TrajectoryOp():
     '''
@@ -18,33 +16,43 @@ class TrajectoryOp():
         self.q_len = q_len
 
     def optimize_trajectory(self):
-        # Set up PyDrake Trajectory Optimization Object
-        trajopt = KinematicTrajectoryOptimization(self.q_len, 10)
-        prog = trajopt.get_mutable_prog() #Getter for a mutable pointer to the optimization program.
-        trajopt.AddDurationCost(1.0) #Adds a linear cost on the duration of the trajectory.
-        trajopt.AddPathLengthCost(1.0) #Adds a cost on an upper bound on length of the path
-        # trajopt.AddPositionBounds() #Adds bounding box constraints to enforce upper and lower bounds on the positions trajectory
-        # trajopt.AddVelocityBounds() #Adds linear constraints to enforce upper and lower bounds on the velocity trajectory
+# ************************************************ Attempts to use standard Pydrake Mathematical Program **************************************************
 
-        # Define the start constraint
-        # start_constraint = PositionConstraint()
-        # trajopt.AddPathPositionConstraint(start_constraint, 0)
-        # prog.AddQuadraticErrorCost(np.eye(self.q_len), q0, trajopt.control_points()[:, 0]) # q0 = ???
+        # Establish the Mathematical Program
+        prog = MathematicalProgram()
 
-        # Define the goal constraint
-        # goal_constraint = PositionConstraint()
-        # trajopt.AddPathPositionConstraint(goal_constraint, 0)
-        # prog.AddQuadraticErrorCost(np.eye(self.q_len), q0, trajopt.control_points()[:, 0]) # q0 = ???
+        # Add 2 sets of 7 continous decision variables, 7 joints, 2 control points on bezier curve
+        x1 = prog.NewContinuousVariables(7, "x1")
+        x2 = prog.NewContinuousVariables(7, "x2")
+        
+        # Add constraints of -pi to pi for each joint
+        constraint1 = prog.AddConstraint(lambda z: np.array([z[0], z[1], z[2], z[3], z[4], z[5], z[6]]), lb=[-np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi], \
+            ub=[np.pi, np.pi, np.pi, np.pi, np.pi, np.pi, np.pi], vars=[[x1[0], x1[1], x1[2], x1[3], x1[4], x1[5], x1[6]]])
+        constraint2 = prog.AddConstraint(lambda z: np.array([z[0], z[1], z[2], z[3], z[4], z[5], z[6]]), lb=[-np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi, -np.pi], \
+            ub=[np.pi, np.pi, np.pi, np.pi, np.pi, np.pi, np.pi], vars=[[x2[0], x2[1], x2[2], x2[3], x2[4], x2[5], x2[6]]])
 
-        # start and end with zero velocity
-        trajopt.AddPathVelocityConstraint(np.zeros((num_q, 1)), np.zeros((num_q, 1)), 0)
-        trajopt.AddPathVelocityConstraint(np.zeros((num_q, 1)), np.zeros((num_q, 1)), 1)
+        u = np.linspace(0,1,100)
 
-        # Solve once without the collisions and set that as the initial guess for
-        # the version with collisions.
+        # Attempt to optimize the trajectory of the arm using a bezier curve to map the trajectory of the joints
+        # x0 = the start configuration
+        # x3 = the goal configuration found
+
         result = Solve(prog)
         if not result.is_success():
             print("Trajectory optimization failed, even without collisions!")
             print(result.get_solver_id().name())
 
         return result
+
+    def construct_bezier_curve(self, u_full, x0, x1, x2, x3):
+        x = []
+        for i in range(len(x0)):
+            x.append([])
+
+        for u in u_full:
+            for i in range(len(x0)):
+                x_i = ((1-u)**3)*x0[i] + (3*u*(1-u)**2)*x1[i] + 3*(u**2)*(1-u)*x2[i] + (u**3)*x3[i]
+                x[i].append(x_i)
+        
+        return 
+
