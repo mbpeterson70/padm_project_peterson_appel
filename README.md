@@ -2,6 +2,7 @@
 
 This README contains the logic and flow of the code in the repo
 
+# **ACTIVITY PLANNER**
 ## Assumptions for our PDDL Domain
 
 We first assumed that there were only three objects that we needed to consider - the sugar, the spam, and the drawer handles. The gripper was not thought of as a an object because we assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time; for example, if the gripper is holding the sugar, it is not able to grab the spam until the sugar has been release. The location aspect of the domain was covered by three different predicates:
@@ -43,7 +44,9 @@ Our first step in checking that our pddl domain and problem statement were corre
 
 Our next step will be creating an activity planner that encorporates a calculated fast-forward heuristic to get the optimal path from our intial state and goal state. 
 
-## Motion Planner
+# **MOTION PLANNER**
+
+![sim](media/full_project.gif)
 
 ### Assumptions
 
@@ -88,4 +91,8 @@ Our project is a work in progress, but we are making progress in the development
 
 Start of simulation. More to come.
 
-![sim](media/p1.png)
+# TRAJECTORY OPTIMIZATION
+
+![rrt](media/rrt_trajectory.gif)
+
+![opt](media/trajectory_optimized.gif)
