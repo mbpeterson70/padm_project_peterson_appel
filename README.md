@@ -1,6 +1,10 @@
 # PADM Final Project - Grant Appel and Mason Peterson
 
-This README contains the logic and flow of the code in the repo
+# **Introduction**
+
+The goal of this project was to demonstrate understanding of the topics introduced throughout the semester in a real world application. The learning objectives for the activity planner were to understand how to formalize a problem in PDDL format, how to assign a hueristic to each activity, and then solve the activity planning problem with a search algorithm that was introduced. The learning objective for the motion planning section was to understand how to implement a sampling based motion planner and all the complexities that are part of it. Finally, the learning objectives for the trajectory optimization section were to see that the non-optimal trajectory developed by various sampling based methods can be dramatically improved upon and to learn how to formalize a trajectory optimization problem with the necessary objective cost function and constraints.
+
+This following README contains the logic and flow of the code in the repo.
 
 # **ACTIVITY PLANNER**
 ## Assumptions for our PDDL Domain
@@ -117,7 +121,7 @@ We found that overall, our motion planner performs quite well. We had to hard-co
 
 Start of simulation. More to come.
 
-# TRAJECTORY OPTIMIZATION
+# **TRAJECTORY OPTIMIZATION**
 
 ## Implementation:
 
@@ -158,3 +162,13 @@ Our trajectory optimization code did not itself account for collision detection.
 * Optimized Trajectory using Bezier Curve Formulation
 
 ![opt](media/trajectory_optimized.gif)
+
+# **Conclusion**
+## Reflection/Discussion/Issues
+
+Overall I feel that we learned a lot throughout the project and saw that many complex issues are needed to be solved in order to transfer what we have learned in the classroom to a real world application. For future years, we feel like much work could go into improving the accessibility of the base code libraries such as PyBullet and PyDrake. Though we were able to get them to work for our implementation, many (unnecessary) hours were spent digging into uncommented code to see how we could potentially use it for our application. 
+
+## Individual Contributions
+* Mason: Developed the code for the A* search for activity planned, the hueristic for activity planner using BFS, the RRT for the arm motion planning,and developed the code necessary to integrate the various parts of the problem together. Additionally, helped 
+* Grant: Developed the code for the relaxed plan graph heuristic (ended up being slower so did not use), the RRT for the robot base motion plannign, and developed the trajectory optimization problem using bezier curves
+* Both: Worked together to convert the problem into a PDDL for the activity planning, wrote up the README
