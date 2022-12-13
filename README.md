@@ -110,6 +110,8 @@ Additionally, constraints were added to the derivatives of the bezier curve. The
 
 ![fd](media/first_derivative.jpg)
 
+![sd](media/second_derivative.jpg)
+
 Next with these constraints coded, the objective cost was defined as a pseudo euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was choosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
 
 ![goal](media/objective_cost.jpg)
