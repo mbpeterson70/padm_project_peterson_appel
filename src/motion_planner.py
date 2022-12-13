@@ -39,6 +39,7 @@ class MotionPlanner():
         self.visual = True
 
     def execute_motion_plan(self, plan, item=None, item_rot_init=None, item_trans_init=None):
+        '''Moves the gripper at a speed of 100 Hz. Also moves items if the function is given items to move.'''
         if item is not None:
             assert item_rot_init is not None
             assert item_trans_init is not None

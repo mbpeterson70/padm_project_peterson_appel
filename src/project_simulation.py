@@ -71,7 +71,7 @@ def main():
     joints = get_movable_joints(world.robot)
 
     # Activity planner
-    planner = ActivityPlanner('sugar_spam_pddl.pddl', 'p1.pddl')
+    planner = ActivityPlanner('sugar_spam_pddl.pddl', 'project_problem.pddl')
     solution = planner.A_star_solver(heuristic='relaxed_moves', consistent=True)
 
     # Activity Executor

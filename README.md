@@ -46,46 +46,43 @@ Our next step will be creating an activity planner that encorporates a calculate
 
 # **MOTION PLANNER**
 
-![sim](media/full_project.gif)
+### Overview
+
+The motion planner is responsible for creating specific plans for the motion of the arm and base to perform the activities planned in the activity planner phase. To accomplish this, we used two main files:
+
+* `motion_planner.py` contains code for planning sample-based paths for the arm and base given a desired goal configuration. Implements a Rapidly exploring Random Tree (RRT) algorithm with collision checking for arm and base.
+* `activity_executor.py` contains code to set up the motion plan for each of the different activities contained in the activity plan. For example, this file would let the motion planner know the robots goal pose it needs to reach the counter and informs the motion planner if the gripper is holding an object.
+
+Additionally, we created a simulation file to sequentially run the activity planner, motion planner, and trajectory optimization: `project_simulation.py`. This file borrowed the setup from the project example. Run this file to run the simulation.
 
 ### Assumptions
 
-* We can always find out the the state of any of the objects in the scene including different pieces of the robot arm
-* We will always start in the same position
-* Robot arm is holding an object when within a certain radius of it (still determining radius)
+Our primary assumptions are that we know the configuration of the environment a priori. This includes:
+* We know the location of the spam and sugar.
+* We can query the simulation to find the locations of the cupboards and drawers.
+* We can query the simulation to find the configuration of the robot and the individual link poses.
 
-### Motion Planner
+We rely on this knowledge of the environment to perform collision-checking and to find goal poses for our RRT motion planning. We keep any poses not received from the environment (spam and sugar) in the `world_params.py` file.
+### Motion Plan Formulation
 
-* There is an associated motion planner with each of the different activities within the PDDL domain space
-* Generally, the motion planners involve translating and rotating the gripper to some new location without colliding with any object
-* These motions involve following the plan created by an RRT algorithm
+The activity executor receives a list of activities to perform. The activity executor iteratively calls a function associated with each activity in order, passing to that function that parameters associated with the activity.
 
-### Files
+Activities that involve the gripper or base moving use the goal location parameter and its knowledge of the environment to create a goal pose for the base or gripper. The activity executor then calls the motion planner to create a plan to get to the goal pose.
 
-* `p1_simulation.py` runs the simulation
-* `motion_planner.py` contains code for planning motions
-* `activity_executor.py` contains code for executing plans (uses motion planner)
+We implemented RRT with goal-biasing and collision checking to create the motion plan. For the gripper, RRT is performed within the gripper's configuration space, i.e. RRT samples a 7x1 random configuration within the bounds of the gripper's joints. We use pybullet's inverse kinematics to get a goal arm configuration given a goal pose. We will not explain the full details of RRT here, but in general RRT constructs a tree uses a series random samples connected with their nearest neighbors to create a series of joint configurations that eventually result in the goal configuration. We use a maximum edge length of .01 radians and goal biasing every 5 samples to help RRT converge to a plan. The algorithm checks that for every intermediate configuration, no arm link is in collision with any part of the kitchen or itself. Because the edge length is very small and to help the algorithm run quickly, we assume that if the norm of the difference between any two configurations < .01 radians, no collisions will happen between the two configurations.
 
-### Integration with Activity Plan
+Once the plan has been generated, we reconfigure the robot arm to each configuration within the plan until the gripper reaches the goal pose. If the gripper is holding an object, we find the object's new rotation and translation based on the gripper's new translation and rotation, and we simulate the object's motion along with the arm's movement.
 
-The activity plan spits out a list of activities to perform and parameters for those activities. We are creating functions within our activity_executor to carry out each of those activities. The activity executor uses the parameters and the poses of the different objects and surfaces to create start positions and goal positions to hand to the motion planner. After receiving a plan from the motion planner, the activity executor executes the plan. 
+We also use RRT for the base motion. We perform RRT in the 2D ground plane for the base motion. Once a 2D path to the goal pose has been found, the robot drives there, pivoting at each 2D waypoint to point in the direction of the next node in the plan. Finally, it rotates to the goal rotation once it has reached its goal position.
+### Results
 
-### Challenges
+![sim](media/full_project.gif)
 
-We found sifting through the huge compilation of source code really difficult. Without many resources, it is hard to understand what the different pieces of the code-base do. 
+Here we show our simulation running. 
 
-Our project is a work in progress, but we are making progress in the development of the code.
-
-### API
-
-* RRT
-  * input: start pose, end pose
-  * output: path (list of states in between)
-* collision_check
-  * input: state, world
-  * output: True, False
-* drive_cart
-* grab object
+We found that overall, our motion planner performs quite well. We had to hard-code a couple of things to help it though.
+1. The robot must be sideways, very close to the counter to be able to reach all the objects. To make this happen, we had to plan a motion to the side of the counter and then turn and drive strate parallel to counter to the goal pose.
+2. The robot struggled to find a few goal poses that were very close to the walls of the kitchen (in particular, to and from the burner). To help speed up the RRT, we provided an intermediate pose in between the start and goal pose to make finding a path easier.
 
 ### Image
 

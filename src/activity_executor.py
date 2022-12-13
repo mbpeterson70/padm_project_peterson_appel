@@ -14,6 +14,9 @@ from pybullet_tools.ikfast.ikfast import closest_inverse_kinematics
 from src.utils import name_from_type
 
 class ActivityExecutor():
+    '''
+    Given an activity plan, executes a series of activities
+    '''
 
     def __init__(self, activity_plan, world):
         self.activity_plan = activity_plan
@@ -27,11 +30,13 @@ class ActivityExecutor():
         self.optimize_trajectory = False
 
     def execute_activity_plan(self):
+        '''Runs each activity.'''
         while self.activity_idx < len(self.activity_plan):
             self.next_activity()
             # wait_for_user()
 
     def next_activity(self):
+        '''Runs the next activity'''
         activity = self.activity_plan[self.activity_idx]
         print(f'Performing action: {activity.name} {activity.parameters}')
         if activity.name == 'move-to-base':
@@ -53,6 +58,7 @@ class ActivityExecutor():
         self.activity_idx += 1
 
     def move_to_base(self, params):
+        '''Plans a motion to the base location next to the kitchen and executes that motion.'''
         if self.testing_mode:
             set_joint_positions(self.world.robot, self.world.base_joints, (0.67, .57, np.pi/2))
             return
@@ -63,6 +69,7 @@ class ActivityExecutor():
         self.mp.turn_and_drive(wp.BASE_COUNTER_POSE)
 
     def move_gripper(self, params):
+        '''Move the gripper from a start to end location, maybe holding an object.'''
         gripper = params[0]
         if len(params) == 3: # move item
             start_loc = params[1]
@@ -119,9 +126,11 @@ class ActivityExecutor():
             self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
 
     def grab_handle(self, params):
+        '''Grab drawer handle.'''
         self.grabbing = wp.HANDLE_NAME
 
     def grab_item(self, params):
+        '''Grab item.'''
         gripper = params[0]
         item = params[1]
         if item == 'sp':
@@ -130,12 +139,15 @@ class ActivityExecutor():
             self.grabbing = wp.SUGAR_NAME
 
     def open_drawer(self, params):
+        '''Moves drawer in the positive x direction.'''
         self.move_drawer(1)
         
     def close_drawer(self, params):
+        '''Moves drawer in the negative x direction.'''
         self.move_drawer(-1)
 
     def move_drawer(self, sign):
+        '''Moves drawer in the @param sign direction.'''
         # assert self.grabbing == wp.HANDLE_NAME
         interp_vec = sign*np.array(wp.DRAWER_OPEN_DIR) * wp.DRAWER_OPEN_DIST / wp.DRAWER_INTERP_NUM
         for i in range(wp.DRAWER_INTERP_NUM):
@@ -158,20 +170,17 @@ class ActivityExecutor():
                 set_pose(body_name, ((new_position.tolist()), item_pose[1]))
     
     def intermediate_move_away(self, away_position, away_attitude):
+        '''Finds a plan to intermediately move the gripper away from objects.'''
         intermediate_pose = (away_position, away_attitude)
         motion_plan = self.mp.motion_plan_rrt(intermediate_pose)
         return motion_plan
-        # if self.grabbing is None:
-        #     self.mp.execute_motion_plan(motion_plan) 
-        # else:
-        #     item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
-        #     item_tran_init = self.get_grabbing_translation()
-        #     self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
 
     def release_object(self, params):
+        '''Let go of object.'''
         self.grabbing = None
     
     def move_item_to_drawer(self, params):
+        '''Moves gripper and item to drawer.'''
         gripper = params[0]
         item = params[1]
         if item == 'sp':
@@ -186,11 +195,9 @@ class ActivityExecutor():
         item_tran_init = self.get_grabbing_translation()
         
         self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
-    
-    def move_gripper_from_drawer(self, params):
-        pass
 
     def get_grabbing_translation(self):
+        '''Translation of objects from gripper when grabbing objects.'''
         if self.grabbing == wp.SPAM_NAME:
             item_tran_init = [0, 0, -.1]
         elif self.grabbing == wp.SUGAR_NAME:
