@@ -137,7 +137,3 @@ class TrajectoryOp():
         plt.show()
         
         return op_path
-
-
-
-
