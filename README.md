@@ -5,44 +5,73 @@ This README contains the logic and flow of the code in the repo
 # **ACTIVITY PLANNER**
 ## Assumptions for our PDDL Domain
 
-We first assumed that there were only three objects that we needed to consider - the sugar, the spam, and the drawer handles. The gripper was not thought of as a an object because we assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time; for example, if the gripper is holding the sugar, it is not able to grab the spam until the sugar has been release. The location aspect of the domain was covered by three different predicates:
+We first assumed that there are five types of objects we need to consider: items (sugar and spam), locations (counter, burner, at handle) the handle, the drawer, and the gripper. We assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time; for example, if the gripper is holding the sugar, it is not able to grab the spam until the sugar has been release. 
 
-on-burner ?i, in-drawer ?i, and on-counter ?i
+The location aspect of the domain was covered by a single predicate:
 
-where the ?i denotes an item type object (spam or sugar). Each of these is set to true if the item is at that location and set to false once the gripper moves them. The gripper location was covered by setting an additoinal predicate:
+`at-location ?o ?l`
 
-gripper-at-object ?o
+where the ?o denotes an object and ?l denotes a location. We set the location of the gripper, spam, and sugar at the beginning of the problem and formulate the actions such that an object can only be at one location. So at-location is only true for each object at one location. Additionally, we set the location of the handle at 'at-handle' which cannot be changed.
 
-for this predicate ?o denotes any object (the sugar, spam and drawer handle). This predicate is set true once an action is chosen for the gripper to move to an object. Alternatively, this predicate is set false after the object has been released and an action is called for the gripper to move away from the object. This means that after each object is moved, the gripper will "reset" at a default location, which will add a small amount of time to the execution, but this was determined to be acceptable. 
+We assume that if the gripper and an object are at the same location, the gripper can pick up that object. We also assume that the gripper can be at the same location as an object, but no other two objects can be at the same location.
 
 ## PDDL File and Problem Formulation
 
-The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [sugar_spam_pddl.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/sugar_spam_pddl.pddl) file and the problem statement can be found in the [p1.pddl](https://github.com/mbpeterson70/padm_project_peterson_appel/blob/main/src/p1.pddl) file. 
+The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [sugar_spam_pddl.pddl](src/kitchen.pddl) file and the problem statement can be found in the [project_problem.pddl](src/p1.pddl) file. 
 
 ### Initial State
 
 The initial state was given in our problem statement. This includes:
 
-1. Sugar on the burner (on-burner su)
-2. Spam on the counter (on-counter sp)
-3. The gripper away from the counter and empty (gripper-empty)
+1. Sugar on the burner (`at-location su on-burner`)
+2. Spam on the counter (`at-location sp on-counter`)
+3. The gripper away from the counter and empty (`at-location g away-from-objects` and `gripper-empty`)
+4. The drawer closed
+5. The drawer empty (`location-empty d`)
 
 ### Goal State
 
 The final state with respect to our problem formulations is:
 
-1. Sugar on the counter (on-counter su)
-2. Spam in the drawer (in-drawer sp)
-3. The gripper is empty (gripper-empty)
-4. The gripper robot is still at the counter (base-at-counter)
-5. The gripper has "reset" to its default locaiton (gripper-away-from-objects)
-6. The drawer is closed (not(drawer-open))
+1. Sugar on the counter (`at-location su on-counter`)
+2. Spam in the drawer (`at-location sp d`)
+3. The gripper is empty (`gripper-empty`)
+4. The gripper robot is still at the counter (`base-at-counter`)
+5. The gripper has "reset" to its default location (`at-location g away-from-objects`)
+6. The drawer is closed (`not(drawer-open)`)
 
-### Check
+### Activity Planner
 
-Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided pddl parser. This was accomplished and we were able to get a list of actions from the initial state to the goal state by using the example activity planner provided.
+Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided PDDL parser and our own BFS planner. This was accomplished and we were able to get a list of actions from the initial state to the goal state by using the example activity planner provided.
 
-Our next step will be creating an activity planner that encorporates a calculated fast-forward heuristic to get the optimal path from our intial state and goal state. 
+To create a fast planner, we use A* with an admissible relaxed moves heuristic. A* with a visited list, as we learned in class, is a tree-based search pattern that places new children on the queue in order of the distance traveled to that child plus an admissible heuristic modeling the cost-to-go. We assume each action has the same constant cost of 1. So, to use A* with a visited list, we needed to use an admissible heuristic.
+
+For our admissible heuristic, we chose the path length of a relaxed problem where delete effects are not added. This heuristic counts the number of actions that are needed to reach the goal state if any positive effects are kept for all future states. This is guaranteed to always be optimistic and thus is an admissible heuristic.
+
+Here is an example output of our action plan:
+
+```
+move-to-base ()
+move-gripper ('g', 'away-from-objects', 'at-handle')
+grab-handle ('g', 'h', 'at-handle')
+open-drawer ('h',)
+release-object ('g', 'at-handle', 'h')
+move-gripper ('g', 'at-handle', 'on-counter')
+grab-item ('g', 'sp', 'on-counter')
+move-item-to-drawer ('g', 'sp', 'on-counter', 'd')
+release-object ('g', 'd', 'sp')
+move-gripper-from-drawer ('g', 'd', 'on-burner')
+grab-item ('g', 'su', 'on-burner')
+move-item ('g', 'su', 'on-burner', 'on-counter')
+release-object ('g', 'on-counter', 'su')
+move-gripper ('g', 'on-counter', 'at-handle')
+grab-handle ('g', 'h', 'at-handle')
+close-drawer ('h',)
+release-object ('g', 'at-handle', 'h')
+move-gripper ('g', 'at-handle', 'away-from-objects')
+```
+
+The activity planner executes in .007 seconds.
 
 # **MOTION PLANNER**
 

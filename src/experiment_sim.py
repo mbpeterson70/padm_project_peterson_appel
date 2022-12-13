@@ -61,7 +61,7 @@ def get_sample_fn(body, joints, custom_limits={}, **kwargs):
     return fn
 
 def main():
-    planner = ActivityPlanner('sugar_spam_pddl.pddl', 'p1.pddl')
+    planner = ActivityPlanner('kitchen.pddl', 'project_problem.pddl')
     solution = planner.A_star_solver()
     for act in solution:
         print(f'{act.name} {act.parameters}')
