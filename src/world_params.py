@@ -5,7 +5,7 @@ import numpy as np
 BASE_COUNTER_POSE = (0.69, -1.1, np.pi)
 POSE_ON_COUNTER = (.2, 1.09, 0.1) 
 POSE_ON_BURNER = (-0.06-.11, 0.5+.11, .1) # (-0.06-.05, 0.5+.05, .1)
-POSE_AWAY = (.03, .66, -.41)
+POSE_AWAY = (.03, .66, -.36)
 POSE_AWAY2 = (.35, 1.0, -.35)
 
 # Orientations/Attitudes

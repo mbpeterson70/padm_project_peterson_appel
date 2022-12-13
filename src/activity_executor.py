@@ -3,6 +3,7 @@ from scipy.spatial.transform import Rotation
 import time
 
 from motion_planner import MotionPlanner
+from trajectory_optimization import TrajectoryOp
 import world_params as wp
 
 from pybullet_tools.utils import get_joint_positions, wait_for_user, get_link_pose, \
@@ -18,10 +19,12 @@ class ActivityExecutor():
         self.activity_plan = activity_plan
         self.activity_idx = 0
         self.mp = MotionPlanner(rrt_edge_len_arm=.01, rrt_edge_len_base_xy=.1, world=world, tol=1e-9)
+        self.to = TrajectoryOp(rrt_edge_len_arm=.2, world=world, tol=1e-9, q_len=7)
         self.world = world
         self.grabbing = None
         self.item_in_drawer = None
         self.testing_mode = False
+        self.optimize_trajectory = False
 
     def execute_activity_plan(self):
         while self.activity_idx < len(self.activity_plan):
@@ -70,8 +73,8 @@ class ActivityExecutor():
         motion_plan = []
 
         if end_loc == 'at-handle':
-            if self.testing_mode and start_loc == 'away-from-objects':
-                return
+            # if self.testing_mode and start_loc == 'away-from-objects':
+            #     return
             if start_loc == 'on-counter':
                 motion_plan += self.intermediate_move_away(wp.POSE_AWAY2, wp.ATT_AWAY2)
             handle_link = link_from_name(self.world.kitchen, wp.HANDLE_NAME)
@@ -103,7 +106,13 @@ class ActivityExecutor():
         else:
             motion_plan = self.mp.motion_plan_rrt(goal_pose)
         if self.grabbing is None:
-            self.mp.execute_motion_plan(motion_plan) 
+            if self.optimize_trajectory and \
+                start_loc == 'away-from-objects' and end_loc == 'at-handle':
+                optimal_motion_plan = self.to.optimize_trajectory(motion_plan)
+                self.mp.execute_motion_plan(optimal_motion_plan) 
+            else:
+                self.mp.execute_motion_plan(motion_plan) 
+
         else:
             item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
             item_tran_init = self.get_grabbing_translation()
@@ -175,6 +184,7 @@ class ActivityExecutor():
         motion_plan = self.mp.motion_plan_rrt(goal_pose)
         item_rot_init = Rotation.from_euler('xyz', [0, 0, np.pi / 4])
         item_tran_init = self.get_grabbing_translation()
+        
         self.mp.execute_motion_plan(motion_plan, self.grabbing, item_rot_init, item_tran_init)
     
     def move_gripper_from_drawer(self, params):

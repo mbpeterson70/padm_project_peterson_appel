@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pydrake.solvers import MathematicalProgram, Solve
+from pybullet_tools.utils import CIRCULAR_LIMITS, get_custom_limits
 
 
 class TrajectoryOp():
@@ -15,6 +16,8 @@ class TrajectoryOp():
         self.world = world
         self.tol = tol
         self.q_len = q_len
+        self.lower_limits, self.upper_limits = \
+            get_custom_limits(self.world.robot, self.world.arm_joints, {}, circular_limits=CIRCULAR_LIMITS)
 
 
     # Bezier curve is a function of u. you can essentially make u = t/T. which would be the timestep you are on over the total number of timesteps.
@@ -38,13 +41,32 @@ class TrajectoryOp():
         #     prog.AddConstraint(q[0][i] == x0[i])
         #     prog.AddConstraint(q[-1][i] == x3[i])
 
+        for t in range(T):
+            u = t/T
+            for i in range(len(x0)):
+                der_sign = np.sign(x3[i] - x0[i])
+                xdot = self.bezier_curve_der(u, x0[i], x1[i], x2[i], x3[i])
+                xddot = self.bezier_curve_sec_der(u, x0[i], x1[i], x2[i], x3[i])
+                prog.AddConstraint(der_sign * xdot >= 0)
+                prog.AddConstraint(der_sign * xddot <= 0)
+                #prog.AddConstraint(der_sign * xdot <= 2*np.pi)
+
+        for t in range(T-1):
+            k = t/T
+            kp1 = (t+1)/T # k plus 1
+            for i in range(len(x0)):
+                der_sign = np.sign(x3[i] - x0[i])
+                x_k = self.bezier_curve(k, x0[i], x1[i], x2[i], x3[i])
+                x_kp1 = self.bezier_curve(kp1, x0[i], x1[i], x2[i], x3[i])
+                prog.AddConstraint(der_sign * (x_kp1 - x_k) <= .1*np.pi)
+
         # Constrain all the points on the curve to be between -pi and pi
         # for t in range(T):
         #     for i in range(len(x0)):
                 # prog.AddBoundingBoxConstraint(-np.pi, np.pi, q[t][i])
         # TODO: Add actual joint constraints
-        prog.AddBoundingBoxConstraint(-np.pi, np.pi, x1)
-        prog.AddBoundingBoxConstraint(-np.pi, np.pi, x2)
+        prog.AddBoundingBoxConstraint(self.lower_limits, self.upper_limits, x1)
+        prog.AddBoundingBoxConstraint(self.lower_limits, self.upper_limits, x2)
 
         # Set initial guess for x1 and x2
         prog.SetInitialGuess(x1, list(motion_plan[round(1*T/3)]))
@@ -64,8 +86,12 @@ class TrajectoryOp():
             u = t/T
             for i in range(len(x0)):
                 x = self.bezier_curve(u, x0[i], x1[i], x2[i], x3[i])
-                prog.AddQuadraticCost((x-x3[i])**2)
-        
+                prog.AddQuadraticCost(((t**2)*(x-x3[i]))**2)
+        # t = T - 1
+        # u = t/T
+        # x = self.bezier_curve(u, x0[6], x1[6], x2[6], x3[6])
+        # prog.AddQuadraticCost((x-x3[6])**2)
+
         result = Solve(prog)
 
         if not result.is_success():
@@ -82,6 +108,16 @@ class TrajectoryOp():
     def bezier_curve(self, u, x0, x1, x2, x3):
         x = ((1-u)**3)*x0 + (3*u*(1-u)**2)*x1 + 3*(u**2)*(1-u)*x2 + (u**3)*x3
         return x
+
+    def bezier_curve_der(self, u, x0, x1, x2, x3):
+        xdot =  -3*(1-u)**2*x0 + 3*(1-u)**2*x1 - 6*u*(1-u)*x1 \
+            - 3*u**2 * x2 + 6*u*(1-u) * x2 + 3*u**2 * x3
+        return xdot
+
+    def bezier_curve_sec_der(self, u, x0, x1, x2, x3):
+        xddot = 6*(1-u)*x0 - 6*(1-u)*x1 - 6*(1-2*u)*x1 \
+            - 6*u*x2 + 6*(1-2*u)*x2 + 6*u*x3
+        return xddot
 
     def trajop(self, T, x0, x1, x2, x3):
         op_path = []
