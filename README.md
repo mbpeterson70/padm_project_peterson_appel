@@ -108,9 +108,20 @@ Another constraint was added that all the joint angles were always within their 
 
 Additionally, constraints were added to the derivatives of the bezier curve. The first derivative was constrained to never cross zero in order to ensure the joints don't pass the desired goal and then oscilate to settle down on it. The second derivative was constrained to always be opposite signs as the first derivative for similar reason as the first. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
 
+Next with these constraints coded, the objective cost was defined as a pseudo euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was choosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
 
+* Insert goal cost equation
 
+Our trajectory optimization code did not itself account for collision detection. To account for this the optimizer was given an initial guess of the trajectory found from our RRT code that did account for collision detection. Namely, the initial and final condition were the same as the constraints outlined above, but the second and third control points of the bezier curve were chosen to be the configurations at times T/3 and 2T/3 respectively. Then our optimizer optimized the problem by changing the second and third control points to optimize based on the cost described above. 
+
+## Code
+* `trajectory_optimization.py` contains code for optimzing the gripper trajectory. This code defines the bezier curve as a funciton of u which is a funciton of t. It also defines the first and second derivatives of the bezier curve. Then using the standard PyDrake MathematicalProgram library, our code optimizes the gripper trajectory to get to the drawer handle.  
+
+## Comparison
+* Standard RRT
 
 ![rrt](media/rrt_trajectory.gif)
+
+* Optimized Trajectory using Bezier Curve Formulation
 
 ![opt](media/trajectory_optimized.gif)
