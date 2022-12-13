@@ -94,15 +94,15 @@ Start of simulation. More to come.
 
 For the trajectory optimization, we began with the understanding that the gripper pose was represented by a vector of the seven arm joint angles.
 
-* Insert picture of q equation.
+![q](media/q_equation.jpg)
 
 Then we modeled the trajectory of each arm joint angle over time as a cubic bezier curve - a bezier curve controlled by 4 points. 
 
-* Insert picture of cubic bezier curve equation.
+![cb](media/cubic_bezier.jpg)
 
 The bezier curve is a function of u which itself is a function of t in our formulation. The T is the total number of time steps, where t is the time step of the point. Therefore giving the relation: 0 <= u <= 1. The problem was constrained by stating that the first and last bezier coefficient equaled the start and goal joint angle. 
 
-* Insert picture of start and goal bezier coefficietn constraints.
+![sf](media/initial_and_final_constraint.jpg)
 
 Another constraint was added that all the joint angles were always within their feasible bounds. 
 
@@ -110,7 +110,7 @@ Additionally, constraints were added to the derivatives of the bezier curve. The
 
 Next with these constraints coded, the objective cost was defined as a pseudo euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was choosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
 
-* Insert goal cost equation
+![goal](media/objective_cost.jpg)
 
 Our trajectory optimization code did not itself account for collision detection. To account for this the optimizer was given an initial guess of the trajectory found from our RRT code that did account for collision detection. Namely, the initial and final condition were the same as the constraints outlined above, but the second and third control points of the bezier curve were chosen to be the configurations at times T/3 and 2T/3 respectively. Then our optimizer optimized the problem by changing the second and third control points to optimize based on the cost described above. 
 
