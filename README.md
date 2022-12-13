@@ -93,6 +93,27 @@ Start of simulation. More to come.
 
 # TRAJECTORY OPTIMIZATION
 
+## Implementation:
+
+For the trajectory optimization, we began with the understanding that the gripper pose was represented by a vector of the seven arm joint angles.
+
+* Insert picture of q equation.
+
+Then we modeled the trajectory of each arm joint angle over time as a cubic bezier curve - a bezier curve controlled by 4 points. 
+
+* Insert picture of cubic bezier curve equation.
+
+The bezier curve is a function of u which itself is a function of t in our formulation. The T is the total number of time steps, where t is the time step of the point. Therefore giving the relation: 0 <= u <= 1. The problem was constrained by stating that the first and last bezier coefficient equaled the start and goal joint angle. 
+
+* Insert picture of start and goal bezier coefficietn constraints.
+
+Another constraint was added that all the joint angles were always within their feasible bounds. 
+
+Additionally, constraints were added to the derivatives of the bezier curve. The first derivative was constrained to never cross zero in order to ensure the joints don't pass the desired goal and then oscilate to settle down on it. The second derivative was constrained to always be opposite signs as the first derivative for similar reason as the first. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
+
+
+
+
 ![rrt](media/rrt_trajectory.gif)
 
 ![opt](media/trajectory_optimized.gif)
