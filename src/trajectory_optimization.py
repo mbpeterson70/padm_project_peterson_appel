@@ -133,9 +133,9 @@ class TrajectoryOp():
                     U.append(u)
                 op_path[t].append(x)
 
-        if True:
-            plt.xlabel('u'); plt.ylabel('Joint 1 angle'); plt.title('Joint 1 Optimized Trajectory')
-            plt.plot(U,joint1)
+        if False:
+            plt.xlabel('t/T (time/total time)'); plt.ylabel('Joint 1 angle (deg)'); plt.title('Joint 1 Optimized Trajectory')
+            plt.plot(np.array(U),np.array(joint1)*180/np.pi)
             plt.show()
         
         return op_path
