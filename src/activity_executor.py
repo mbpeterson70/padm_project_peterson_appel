@@ -27,7 +27,7 @@ class ActivityExecutor():
         self.grabbing = None
         self.item_in_drawer = None
         self.testing_mode = False
-        self.optimize_trajectory = False
+        self.optimize_trajectory = True
 
     def execute_activity_plan(self):
         '''Runs each activity.'''

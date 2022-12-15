@@ -13,19 +13,19 @@ This following README contains a description of our work.
 
 ## Assumptions for our PDDL Domain
 
-We first assumed that there are five types of objects we need to consider: items (sugar and spam), locations (counter, burner, at handle) the handle, the drawer, and the gripper. We assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time.
+First, we use five types of objects to represent the problem: 1) the handle, 2) the drawer, 3) items (sugar and spam), 4) the gripper, and 5) locations (counter, burner, at-handle). We assumed that the location of the gripper would be known at all times and that we could precisely control the gripper configuration. Additionally, we assume that the gripper can only grab one of the objects at a time.
 
 The location aspect of the domain was covered by a single predicate:
 
 `at-location ?o ?l`
 
-where the ?o denotes an object and ?l denotes a location. We set the location of the gripper, spam, and sugar at the beginning of the problem and formulate the actions such that an object can only be at one location at once. Additionally, we set the location of the handle at 'at-handle' which cannot be changed.
+where the ?o denotes an object and ?l denotes a location. We set the location of the gripper, spam, sugar, and handle at the beginning of the problem and formulate the actions such that an object can only be at one location at once. Additionally, actions can move the locations of the gripper, spam, and sugar only.
 
-We assume that if the gripper and an object are at the same location, the gripper can pick up that object. We also assume that the gripper can be at the same location as an object, but no other two objects can be at the same location.
+We assume that if the gripper and an object are at the same location, the gripper can pick up that object. Finally, we assume that the gripper can be at the same location as an object, but no other two objects can be at the same location.
 
 ## PDDL File and Problem Formulation
 
-The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [kitchen.pddl](src/kitchen.pddl) file and the problem statement can be found in the [project_problem.pddl](src/project_problem.pddl) file. 
+The actual PDDL domain and all corresponding objects, predicates, and actions can be found in the [kitchen.pddl](src/kitchen.pddl) file and the problem statement can be found in the [project_problem.pddl](src/project_problem.pddl) file. 
 
 ### Initial State
 
@@ -34,7 +34,7 @@ The initial state was given in our problem statement. This includes:
 1. Sugar on the burner (`at-location su on-burner`)
 2. Spam on the counter (`at-location sp on-counter`)
 3. The gripper away from the counter and empty (`at-location g away-from-objects` and `gripper-empty`)
-4. The drawer closed
+4. The drawer closed (`not(drawer-open)`)
 5. The drawer empty (`location-empty d`)
 
 ### Goal State
@@ -50,11 +50,11 @@ The final state with respect to our problem formulations is:
 
 ### Activity Planner
 
-Our first step in checking that our pddl domain and problem statement were correct was getting them to work correctly with the provided PDDL parser and our own BFS planner. This was accomplished and we were able to get a list of actions from the initial state to the goal state by using the example activity planner provided.
+First, we coded a BFS solver to work with the provided PDDL parser and evaluate the correctness of our PDDL problem formulation.
 
-To create a fast planner, we use A* with an admissible relaxed moves heuristic. A* with a visited list, as we learned in class, is a tree-based search pattern that places new children on the queue in order of the distance traveled to that child plus an admissible heuristic modeling the cost-to-go. We assume each action has the same constant cost of 1. So, to use A* with a visited list, we needed to use an admissible heuristic.
+To create a fast planner, we used A* with an admissible relaxed moves heuristic. A* with a visited list, as we learned in class, is a tree-based search pattern that places new children on the queue in order of the distance traveled to that child plus an admissible heuristic modeling the cost-to-go. We assume each action has the same constant cost of 1. So, to use A* with a visited list, we needed to use an admissible, consistent heuristic.
 
-For our admissible heuristic, we chose the path length of a relaxed problem where delete effects are not added. This heuristic counts the number of actions that are needed to reach the goal state if any positive effects are kept for all future states. This is guaranteed to always be optimistic and thus is an admissible heuristic.
+For our admissible heuristic, we chose the path length (NOT added actions) of a relaxed problem where delete effects are not added. This heuristic counts the number of actions that are needed to reach the goal state if any positive effects are kept for all future states. This is guaranteed to always be optimistic and thus is an admissible heuristic.
 
 Here is an example output of our action plan:
 
@@ -68,28 +68,28 @@ The activity planner executes in .007 seconds.
 
 The motion planner is responsible for creating specific plans for the motion of the arm and base to perform the activities planned in the activity planner phase. To accomplish this, we used two main files:
 
-* `motion_planner.py` contains code for planning sample-based paths for the arm and base given a desired goal configuration. Implements a Rapidly exploring Random Tree (RRT) algorithm with collision checking for arm and base.
-* `activity_executor.py` contains code to set up the motion plan for each of the different activities contained in the activity plan. For example, this file would let the motion planner know the robots goal pose it needs to reach the counter and informs the motion planner if the gripper is holding an object.
+* `motion_planner.py`: creates sample-based motion plans for the arm and base given a desired goal configuration. Implements a Rapidly exploring Random Tree (RRT) algorithm with collision checking for arm and base.
+* `activity_executor.py` contains code to set up the motion plan for each of the different activities contained in the activity plan. For example, when executing the `move-gripper(g, away-from-objects, at-handle)` action, the activity executor requests a motion plan from the RRT planner for the gripper to reach a pose near the handle.
 
 Additionally, we created a simulation file to sequentially run the activity planner, motion planner, and trajectory optimization: `project_simulation.py`. This file borrowed the setup from the project example. Run this file to run the simulation.
 
 ### Assumptions
 
 Our primary assumptions are that we know the configuration of the environment at runtime. This includes:
-* We know the location of the spam and sugar.
-* We can query the simulation to find the locations of the cupboards and drawers.
+* We know the location of the items.
+* We can query the simulation to find the cupboards and drawers' locations.
 * We can query the simulation to find the configuration of the robot and the individual link poses.
 
 We rely on this knowledge of the environment to perform collision-checking and to find goal poses for our RRT motion planning. We keep any poses not received from the environment (spam and sugar) in the `world_params.py` file.
 ### Motion Plan Formulation
 
-The activity executor receives a list of activities to perform. The activity executor iteratively calls a function associated with each activity in order, passing to that function that parameters associated with the activity.
+The activity executor receives a list of activities to perform. The activity executor iteratively calls a function associated with each activity, passing that function the activity parameters.
 
-Activities that involve the gripper or base moving use the goal location parameter and its knowledge of the environment to create a goal pose for the base or gripper. The activity executor then calls the motion planner to create a plan to get to the goal pose.
+Activity functions that involve moving the gripper or base create a goal pose for the base or gripper using location knowledge of the environment. The functions then call the motion planner to create a plan to achieve the goal pose.
 
-We implemented RRT with goal-biasing and collision checking to create the motion plan. For the gripper, RRT is performed within the gripper's configuration space, i.e. RRT samples a 7x1 random configuration within the bounds of the gripper's joints. We use pybullet's inverse kinematics to get a goal arm configuration given a goal pose. RRT constructs a tree using a series random samples connected with their nearest neighbors to create a series of joint configurations that eventually result in the goal configuration. We use a maximum edge length of .01 radians and sample within the goal configuration every 5 samples to help RRT converge to a plan. The algorithm checks that for every intermediate configuration, no arm link is in collision with any part of the kitchen or itself. Because the edge length is very small and to help the algorithm run quickly, we assume that if the norm of the difference between any two configurations is less than .01 radians, no collisions will happen between the two configurations.
+We implemented RRT with goal-biasing and collision-checking to create the motion plan. For the gripper, RRT is performed within the gripper's configuration space, i.e. RRT samples a 7x1 random configuration within the bounds of the gripper's joints. We use pybullet's inverse kinematics to get a goal arm configuration given a goal pose. RRT constructs a tree using a series of random samples connected with their nearest neighbors to create a series of joint configurations that eventually result in the goal configuration. We use a maximum edge length of .01 radians and sample within the goal configuration every 5 samples to help RRT converge to a plan. The algorithm checks that for every intermediate configuration, no arm link is in collision with any part of the kitchen or itself. Because the edge length is very small, we assume that if the norm of the difference between any two configurations is less than .01 radians, no collisions will happen between the two configurations.
 
-Once the plan has been generated, we reconfigure the robot arm to each configuration within the plan until the gripper reaches the goal pose. If the gripper is holding an object, we find the object's new rotation and translation based on the gripper's new translation and rotation, and we simulate the object's motion along with the arm's movement.
+Once the plan has been generated, we reconfigure the robot arm to each configuration within the plan. If the gripper is holding an object, we find the object's new rotation and translation based on the gripper's new translation and rotation, and we simulate the object's motion along with the arm's movement.
 
 We also use RRT for the base motion. We perform RRT in the 2D ground plane for the base motion. Once a 2D path to the goal pose has been found, the robot drives there, pivoting at each 2D waypoint to point in the direction of the next node in the plan. Finally, it rotates to the goal rotation once it has reached its goal position.
 ### Results
@@ -119,7 +119,7 @@ The bezier curve is a function of *u* which is simply *t*/*T*, where t is the cu
 
 Another constraint was added that all the joint angles were always within their feasible bounds. 
 
-Additionally, constraints were added to the derivatives of the bezier curve. The first derivative was constrained to never cross zero in order to ensure the joints don't pass the desired goal and then oscilate to settle down on it. The second derivative was constrained to always be opposite signs as the first derivative for similar reason as the first. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
+Additionally, constraints were added to the derivatives of the bezier curve. The first and second derivatives of the trajectory were constrained to never cross zero to ensure the joints arrive at the goal configuration without oscillation as seen in the figure below. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
 
 ![fd](media/first_derivative.jpg)
 
@@ -146,7 +146,7 @@ Our trajectory optimization code did not account for collision detection. To acc
 # **Conclusion**
 ## Reflection/Discussion/Issues
 
-Overall I feel that we learned a lot throughout the project and saw that many complex issues are needed to be solved in order to transfer what we have learned in the classroom to a real world application. For future years, we feel like much work could go into improving the accessibility of the base code libraries such as PyBullet and PyDrake. Though we were able to get them to work for our implementation, many (unnecessary) hours were spent digging into uncommented code to see how we could potentially use it for our application. 
+Overall we learned a lot throughout the project and developed a better knowledge of the complex issues to transfer what we have learned in the classroom to a real-world application. For future years, we feel like much work could go into improving the accessibility of the base code libraries such as PyBullet and PyDrake. Though we were able to get them to work for our implementation, many (unnecessary) hours were spent digging into uncommented code to see how we could potentially use it for our application. 
 
 ## Individual Contributions
 * Mason: Developed the code for the A* search for activity planner, the hueristic for activity planner using BFS, the RRT for the arm motion planning,and developed the code necessary to integrate the various parts of the problem together. Additionally, helped develop constraints for trajectory optimization.
