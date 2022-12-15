@@ -119,11 +119,13 @@ The bezier curve is a function of *u* which is simply *t*/*T*, where t is the cu
 
 Another constraint was added that all the joint angles were always within their feasible bounds. 
 
-Additionally, constraints were added to the derivatives of the bezier curve. The first and second derivatives of the trajectory were constrained to never cross zero to ensure the joints arrive at the goal configuration without oscillation as seen in the figure below. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
+Additionally, constraints were added to the derivatives of the bezier curve. The first and second derivatives of the trajectory were constrained to never cross zero to ensure the joints arrive at the goal configuration without oscillation as seen in the plot below. The final constraint added was to ensure that the difference in the discrete time stepped positions never exceeded pi/10. This acted as a velocity constraint. 
 
 ![fd](media/first_derivative.jpg)
 
 ![sd](media/second_derivative.jpg)
+
+![trajplot](media/traj_plot.png)
 
 Next with these constraints coded, the objective cost was defined as a pseudo-euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was chosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
 
