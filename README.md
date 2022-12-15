@@ -2,9 +2,12 @@
 
 # **Introduction**
 
-The goal of this project was to demonstrate understanding of the topics introduced throughout the semester in a real world application. The learning objectives for the activity planner were to understand how to formalize a problem in PDDL format and solve the activity planning problem with a search algorithm and appropriate heuristic. The learning objective for the motion planning section was to understand how to implement a sampling based motion planner with a complex autonomous system and interact with a simulation environment. Finally, the learning objectives for the trajectory optimization section were to show that the non-optimal trajectory developed by various sampling based methods can be dramatically improved upon and to learn how to formalize a trajectory optimization problem with the necessary objective cost function and constraints.
+The goal of this project was to demonstrate understanding principles of autonomy and planning and demonstrate these principles in a real world application. The learning objectives for the individual parts are as follows:
+* Activity planner: formulate a problem in PDDL format and solve the activity planning problem with a search algorithm and appropriate heuristic.
+* Motion planner: understand and implement a sampling-based motion planner with a complex autonomous system and interact with a simulation environment. 
+* Trajectory optimization: show that non-optimal sampling-based trajectories can be dramatically improved by trajectory optimization. Formulate a trajectory optimization problem with appropriate objective cost function and constraints.
 
-This following README contains the logic and flow of the code in the repo.
+This following README contains a description of our work.
 
 # **ACTIVITY PLANNER**
 
@@ -55,26 +58,7 @@ For our admissible heuristic, we chose the path length of a relaxed problem wher
 
 Here is an example output of our action plan:
 
-```
-move-to-base ()
-move-gripper ('g', 'away-from-objects', 'at-handle')
-grab-handle ('g', 'h', 'at-handle')
-open-drawer ('h',)
-release-object ('g', 'at-handle', 'h')
-move-gripper ('g', 'at-handle', 'on-counter')
-grab-item ('g', 'sp', 'on-counter')
-move-item-to-drawer ('g', 'sp', 'on-counter', 'd')
-release-object ('g', 'd', 'sp')
-move-gripper-from-drawer ('g', 'd', 'on-burner')
-grab-item ('g', 'su', 'on-burner')
-move-item ('g', 'su', 'on-burner', 'on-counter')
-release-object ('g', 'on-counter', 'su')
-move-gripper ('g', 'on-counter', 'at-handle')
-grab-handle ('g', 'h', 'at-handle')
-close-drawer ('h',)
-release-object ('g', 'at-handle', 'h')
-move-gripper ('g', 'at-handle', 'away-from-objects')
-```
+![activity_plan](media/activity_plan.png)
 
 The activity planner executes in .007 seconds.
 
@@ -91,7 +75,7 @@ Additionally, we created a simulation file to sequentially run the activity plan
 
 ### Assumptions
 
-Our primary assumptions are that we know the configuration of the environment a priori. This includes:
+Our primary assumptions are that we know the configuration of the environment at runtime. This includes:
 * We know the location of the spam and sugar.
 * We can query the simulation to find the locations of the cupboards and drawers.
 * We can query the simulation to find the configuration of the robot and the individual link poses.
@@ -103,7 +87,7 @@ The activity executor receives a list of activities to perform. The activity exe
 
 Activities that involve the gripper or base moving use the goal location parameter and its knowledge of the environment to create a goal pose for the base or gripper. The activity executor then calls the motion planner to create a plan to get to the goal pose.
 
-We implemented RRT with goal-biasing and collision checking to create the motion plan. For the gripper, RRT is performed within the gripper's configuration space, i.e. RRT samples a 7x1 random configuration within the bounds of the gripper's joints. We use pybullet's inverse kinematics to get a goal arm configuration given a goal pose. We will not explain the full details of RRT here, but in general RRT constructs a tree uses a series random samples connected with their nearest neighbors to create a series of joint configurations that eventually result in the goal configuration. We use a maximum edge length of .01 radians and goal biasing every 5 samples to help RRT converge to a plan. The algorithm checks that for every intermediate configuration, no arm link is in collision with any part of the kitchen or itself. Because the edge length is very small and to help the algorithm run quickly, we assume that if the norm of the difference between any two configurations < .01 radians, no collisions will happen between the two configurations.
+We implemented RRT with goal-biasing and collision checking to create the motion plan. For the gripper, RRT is performed within the gripper's configuration space, i.e. RRT samples a 7x1 random configuration within the bounds of the gripper's joints. We use pybullet's inverse kinematics to get a goal arm configuration given a goal pose. RRT constructs a tree using a series random samples connected with their nearest neighbors to create a series of joint configurations that eventually result in the goal configuration. We use a maximum edge length of .01 radians and sample within the goal configuration every 5 samples to help RRT converge to a plan. The algorithm checks that for every intermediate configuration, no arm link is in collision with any part of the kitchen or itself. Because the edge length is very small and to help the algorithm run quickly, we assume that if the norm of the difference between any two configurations is less than .01 radians, no collisions will happen between the two configurations.
 
 Once the plan has been generated, we reconfigure the robot arm to each configuration within the plan until the gripper reaches the goal pose. If the gripper is holding an object, we find the object's new rotation and translation based on the gripper's new translation and rotation, and we simulate the object's motion along with the arm's movement.
 
@@ -115,13 +99,8 @@ We also use RRT for the base motion. We perform RRT in the 2D ground plane for t
 Here we show our simulation running. 
 
 We found that overall, our motion planner performs quite well. We had to hard-code a couple of things to help it though.
-1. The robot must be sideways, very close to the counter to be able to reach all the objects. To make this happen, we had to plan a motion to the side of the counter and then turn and drive strate parallel to counter to the goal pose.
-2. The robot struggled to find a few goal poses that were very close to the walls of the kitchen (in particular, to and from the burner). To help speed up the RRT, we provided an intermediate pose in between the start and goal pose to make finding a path easier.
-
-### Image
-
-Start of simulation. More to come.
-
+1. The robot must be sideways, very close to the counter to be able to reach all the objects. To make this happen, we had to use RRT to plan a motion to the side of the counter and then turn and drive straight, parallel to counter, to the goal pose.
+2. The robot struggled to find a few goal poses that were very close to the walls of the kitchen. To help speed up the RRT, we provided an intermediate pose in between the start and goal poses to make finding a path easier.
 # **TRAJECTORY OPTIMIZATION**
 
 ## Implementation:
@@ -134,7 +113,7 @@ Then we modeled the trajectory of each arm joint angle over time as a cubic bezi
 
 ![cb](media/cubic_bezier.jpg)
 
-The bezier curve is a function of u which itself is a function of t in our formulation. The T is the total number of time steps, where t is the time step of the point. Therefore giving the relation: 0 <= u <= 1. The problem was constrained by stating that the first and last bezier coefficient equaled the start and goal joint angle. 
+The bezier curve is a function of *u* which is simply *t*/*T*, where t is the current time-step and T is the total number of time-steps. Thus, u is bounded as 0 <= u <= 1. The problem was constrained by stating that the first and last bezier coefficient equal the start and goal joint angle respectively. 
 
 ![sf](media/initial_and_final_constraint.jpg)
 
@@ -146,14 +125,14 @@ Additionally, constraints were added to the derivatives of the bezier curve. The
 
 ![sd](media/second_derivative.jpg)
 
-Next with these constraints coded, the objective cost was defined as a pseudo euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was choosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
+Next with these constraints coded, the objective cost was defined as a pseudo-euclidian distance between each discrete point on each bezier curve to its respective final goal position. This was chosen so that the optimizer would move the two middle control points in such a manner that the gripper trajectory would approach the final goal as fast as possible and then settle down on the goal position. 
 
 ![goal](media/objective_cost.jpg)
 
-Our trajectory optimization code did not itself account for collision detection. To account for this the optimizer was given an initial guess of the trajectory found from our RRT code that did account for collision detection. Namely, the initial and final condition were the same as the constraints outlined above, but the second and third control points of the bezier curve were chosen to be the configurations at times T/3 and 2T/3 respectively. Then our optimizer optimized the problem by changing the second and third control points to optimize based on the cost described above. 
+Our trajectory optimization code did not account for collision detection. To account for this the optimizer was given an initial guess of the trajectory found from our RRT code that did account for collision detection. Namely, the initial and final condition were the same as the constraints outlined above, but the second and third control points of the bezier curve were chosen to be the configurations specified by the RRT plan at times *T*/3 and 2*T*/3 respectively. Then our optimizer improved the plan by changing the second and third control points to minimize the cost above. 
 
 ## Code
-* `trajectory_optimization.py` contains code for optimzing the gripper trajectory. This code defines the bezier curve as a funciton of u which is a funciton of t. It also defines the first and second derivatives of the bezier curve. Then using the standard PyDrake MathematicalProgram library, our code optimizes the gripper trajectory to get to the drawer handle.  
+* `trajectory_optimization.py` contains code for optimizing the gripper trajectory. This code defines the bezier curve as a function of u. It also defines the first and second derivatives of the bezier curve. Then using the standard PyDrake MathematicalProgram library, our code optimizes the gripper trajectory to get to the drawer handle.  
 
 ## Comparison
 * Standard RRT
@@ -170,6 +149,6 @@ Our trajectory optimization code did not itself account for collision detection.
 Overall I feel that we learned a lot throughout the project and saw that many complex issues are needed to be solved in order to transfer what we have learned in the classroom to a real world application. For future years, we feel like much work could go into improving the accessibility of the base code libraries such as PyBullet and PyDrake. Though we were able to get them to work for our implementation, many (unnecessary) hours were spent digging into uncommented code to see how we could potentially use it for our application. 
 
 ## Individual Contributions
-* Mason: Developed the code for the A* search for activity planned, the hueristic for activity planner using BFS, the RRT for the arm motion planning,and developed the code necessary to integrate the various parts of the problem together. Additionally, helped 
-* Grant: Developed the code for the relaxed plan graph heuristic (ended up being slower so did not use), the RRT for the robot base motion plannign, and developed the trajectory optimization problem using bezier curves
-* Both: Worked together to convert the problem into a PDDL for the activity planning, wrote up the README
+* Mason: Developed the code for the A* search for activity planner, the hueristic for activity planner using BFS, the RRT for the arm motion planning,and developed the code necessary to integrate the various parts of the problem together. Additionally, helped develop constraints for trajectory optimization.
+* Grant: Developed the code for the relaxed plan graph heuristic, the RRT for the robot base motion planning, and developed the trajectory optimization problem using bezier curves.
+* Both: Worked together to convert the problem into a PDDL for the activity planning, wrote up the README.
