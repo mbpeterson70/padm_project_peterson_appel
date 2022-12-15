@@ -2,26 +2,27 @@
 
 # **Introduction**
 
-The goal of this project was to demonstrate understanding of the topics introduced throughout the semester in a real world application. The learning objectives for the activity planner were to understand how to formalize a problem in PDDL format, how to assign a hueristic to each activity, and then solve the activity planning problem with a search algorithm that was introduced. The learning objective for the motion planning section was to understand how to implement a sampling based motion planner and all the complexities that are part of it. Finally, the learning objectives for the trajectory optimization section were to see that the non-optimal trajectory developed by various sampling based methods can be dramatically improved upon and to learn how to formalize a trajectory optimization problem with the necessary objective cost function and constraints.
+The goal of this project was to demonstrate understanding of the topics introduced throughout the semester in a real world application. The learning objectives for the activity planner were to understand how to formalize a problem in PDDL format and solve the activity planning problem with a search algorithm and appropriate heuristic. The learning objective for the motion planning section was to understand how to implement a sampling based motion planner with a complex autonomous system and interact with a simulation environment. Finally, the learning objectives for the trajectory optimization section were to show that the non-optimal trajectory developed by various sampling based methods can be dramatically improved upon and to learn how to formalize a trajectory optimization problem with the necessary objective cost function and constraints.
 
 This following README contains the logic and flow of the code in the repo.
 
 # **ACTIVITY PLANNER**
+
 ## Assumptions for our PDDL Domain
 
-We first assumed that there are five types of objects we need to consider: items (sugar and spam), locations (counter, burner, at handle) the handle, the drawer, and the gripper. We assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time; for example, if the gripper is holding the sugar, it is not able to grab the spam until the sugar has been release. 
+We first assumed that there are five types of objects we need to consider: items (sugar and spam), locations (counter, burner, at handle) the handle, the drawer, and the gripper. We assumed that the location of the gripper would be known at all times and the gripper itself would not be moved around by anything and would act as the vehicle for the other objects to move. Additionally, we assume that the gripper can only grab one of the objects at a time.
 
 The location aspect of the domain was covered by a single predicate:
 
 `at-location ?o ?l`
 
-where the ?o denotes an object and ?l denotes a location. We set the location of the gripper, spam, and sugar at the beginning of the problem and formulate the actions such that an object can only be at one location. So at-location is only true for each object at one location. Additionally, we set the location of the handle at 'at-handle' which cannot be changed.
+where the ?o denotes an object and ?l denotes a location. We set the location of the gripper, spam, and sugar at the beginning of the problem and formulate the actions such that an object can only be at one location at once. Additionally, we set the location of the handle at 'at-handle' which cannot be changed.
 
 We assume that if the gripper and an object are at the same location, the gripper can pick up that object. We also assume that the gripper can be at the same location as an object, but no other two objects can be at the same location.
 
 ## PDDL File and Problem Formulation
 
-The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [sugar_spam_pddl.pddl](src/kitchen.pddl) file and the problem statement can be found in the [project_problem.pddl](src/p1.pddl) file. 
+The actual PDDL domain and all corresponding objects, predicates and actions can be found in the [kitchen.pddl](src/kitchen.pddl) file and the problem statement can be found in the [project_problem.pddl](src/project_problem.pddl) file. 
 
 ### Initial State
 
